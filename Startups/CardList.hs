@@ -6,25 +6,14 @@ import Startups.Cards
 
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Monoid
 
 getMaxStage :: CompanyProfile -> CompanyStage
 getMaxStage (CompanyProfile Facebook B) = Stage2
 getMaxStage (CompanyProfile Microsoft B) = Stage4
 getMaxStage _ = Stage3
 
-wondercard :: Company -> CompanyStage -> Cost -> [Effect] -> Card
-wondercard c s cost eff = Card ("[" <> T.pack (show c) <> "] " <> phase) 0 Age1 CompanyStage cost [] eff
-    where
-        phase = case s of
-                    Project -> "project phase"
-                    Stage1  -> "initial funding"
-                    Stage2  -> "grow"
-                    Stage3  -> "world takeover"
-                    Stage4  -> "And with strange aeons even death may die."
-
 getResourceCard :: CompanyProfile -> CompanyStage -> Card
-getResourceCard (CompanyProfile c _) Project = wondercard c Project "" [ProvideResource r 1 Shared]
+getResourceCard p@(CompanyProfile c _) Project = CompanyCard p Project "" [ProvideResource r 1 Shared]
     where r = case c of
                   Facebook  -> Finance
                   Twitter   -> Youthfulness
@@ -33,7 +22,7 @@ getResourceCard (CompanyProfile c _) Project = wondercard c Project "" [ProvideR
                   Instagram -> Marketing
                   Amazon    -> Adoption
                   Microsoft -> Operations
-getResourceCard (CompanyProfile c A) Stage1 = wondercard c Stage1 cost [AddVictory CompanyVictory 3 HappensOnce]
+getResourceCard p@(CompanyProfile c A) Stage1 = CompanyCard p Stage1 cost [AddVictory CompanyVictory 3 HappensOnce]
     where
         cost = case c of
                   Facebook  -> "MM"
@@ -43,7 +32,7 @@ getResourceCard (CompanyProfile c A) Stage1 = wondercard c Stage1 cost [AddVicto
                   Instagram -> "MM"
                   Amazon    -> "DD"
                   Microsoft -> "OO"
-getResourceCard (CompanyProfile c A) Stage2 = wondercard c Stage2 cost eff
+getResourceCard p@(CompanyProfile c A) Stage2 = CompanyCard p Stage2 cost eff
     where
         (cost, eff) = case c of
                           Facebook  -> ("DDD" , [Poaching 2])
@@ -53,7 +42,7 @@ getResourceCard (CompanyProfile c A) Stage2 = wondercard c Stage2 cost eff
                           Instagram -> ("OO"  , [Opportunity (S.fromList [Age1 .. Age3])])
                           Amazon    -> ("FFF" , [Recycling])
                           Microsoft -> ("MMM" , [AddVictory CompanyVictory 5 HappensOnce])
-getResourceCard (CompanyProfile c A) Stage3 = wondercard c Stage3 cost [AddVictory CompanyVictory 7 HappensOnce]
+getResourceCard p@(CompanyProfile c A) Stage3 = CompanyCard p Stage3 cost [AddVictory CompanyVictory 7 HappensOnce]
     where
         cost = case c of
                   Facebook  -> "FFFF"
@@ -63,27 +52,27 @@ getResourceCard (CompanyProfile c A) Stage3 = wondercard c Stage3 cost [AddVicto
                   Instagram -> "FF"
                   Amazon    -> "AA"
                   Microsoft -> "OOOO"
-getResourceCard (CompanyProfile c@Facebook  B) s@Stage1 = wondercard c s "OOO"  [Poaching 1, AddVictory CompanyVictory 3 HappensOnce, GainFunding 3 HappensOnce]
-getResourceCard (CompanyProfile c@Facebook  B) s@Stage2 = wondercard c s "FFFF" [Poaching 1, AddVictory CompanyVictory 4 HappensOnce, GainFunding 4 HappensOnce]
-getResourceCard (CompanyProfile c@Twitter   B) s@Stage1 = wondercard c s "DD"   [ResourceChoice baseResources Kept]
-getResourceCard (CompanyProfile c@Twitter   B) s@Stage2 = wondercard c s "MM"   [ResourceChoice advancedResources Kept]
-getResourceCard (CompanyProfile c@Twitter   B) s@Stage3 = wondercard c s "OOO"  [AddVictory CompanyVictory 7 HappensOnce]
-getResourceCard (CompanyProfile c@Apple     B) s@Stage1 = wondercard c s "OO"   [AddVictory CompanyVictory 2 HappensOnce, GainFunding 4 HappensOnce]
-getResourceCard (CompanyProfile c@Apple     B) s@Stage2 = wondercard c s "MM"   [AddVictory CompanyVictory 3 HappensOnce, GainFunding 4 HappensOnce]
-getResourceCard (CompanyProfile c@Apple     B) s@Stage3 = wondercard c s "YVA"  [AddVictory CompanyVictory 5 HappensOnce, GainFunding 4 HappensOnce]
-getResourceCard (CompanyProfile c@Google    B) s@Stage1 = wondercard c s "DA"   [AddVictory CompanyVictory 3 HappensOnce]
-getResourceCard (CompanyProfile c@Google    B) s@Stage2 = wondercard c s "MMY"  [Efficiency]
-getResourceCard (CompanyProfile c@Google    B) s@Stage3 = wondercard c s "DDDV" [ScientificBreakthrough]
-getResourceCard (CompanyProfile c@Instagram B) s@Stage1 = wondercard c s "MM"   [CheapExchange baseResources (S.fromList [NLeft, NRight])]
-getResourceCard (CompanyProfile c@Instagram B) s@Stage2 = wondercard c s "OO"   [AddVictory CompanyVictory 5 HappensOnce]
-getResourceCard (CompanyProfile c@Instagram B) s@Stage3 = wondercard c s "FFA"  [CopyCommunity]
-getResourceCard (CompanyProfile c@Amazon    B) s@Stage1 = wondercard c s "FF"   [AddVictory CompanyVictory 2 HappensOnce, Recycling]
-getResourceCard (CompanyProfile c@Amazon    B) s@Stage2 = wondercard c s "DDD"  [AddVictory CompanyVictory 1 HappensOnce, Recycling]
-getResourceCard (CompanyProfile c@Amazon    B) s@Stage3 = wondercard c s "YVA"  [Recycling]
-getResourceCard (CompanyProfile c@Microsoft B) s@Stage1 = wondercard c s "MM"   [AddVictory CompanyVictory 3 HappensOnce]
-getResourceCard (CompanyProfile c@Microsoft B) s@Stage2 = wondercard c s "OOO"  [AddVictory CompanyVictory 5 HappensOnce]
-getResourceCard (CompanyProfile c@Microsoft B) s@Stage3 = wondercard c s "DDD"  [AddVictory CompanyVictory 5 HappensOnce]
-getResourceCard (CompanyProfile c@Microsoft B) s@Stage4 = wondercard c s "OOOOA"[AddVictory CompanyVictory 7 HappensOnce]
+getResourceCard c@(CompanyProfile Facebook  B) s@Stage1 = CompanyCard c s "OOO"  [Poaching 1, AddVictory CompanyVictory 3 HappensOnce, GainFunding 3 HappensOnce]
+getResourceCard c@(CompanyProfile Facebook  B) s@Stage2 = CompanyCard c s "FFFF" [Poaching 1, AddVictory CompanyVictory 4 HappensOnce, GainFunding 4 HappensOnce]
+getResourceCard c@(CompanyProfile Twitter   B) s@Stage1 = CompanyCard c s "DD"   [ResourceChoice baseResources Kept]
+getResourceCard c@(CompanyProfile Twitter   B) s@Stage2 = CompanyCard c s "MM"   [ResourceChoice advancedResources Kept]
+getResourceCard c@(CompanyProfile Twitter   B) s@Stage3 = CompanyCard c s "OOO"  [AddVictory CompanyVictory 7 HappensOnce]
+getResourceCard c@(CompanyProfile Apple     B) s@Stage1 = CompanyCard c s "OO"   [AddVictory CompanyVictory 2 HappensOnce, GainFunding 4 HappensOnce]
+getResourceCard c@(CompanyProfile Apple     B) s@Stage2 = CompanyCard c s "MM"   [AddVictory CompanyVictory 3 HappensOnce, GainFunding 4 HappensOnce]
+getResourceCard c@(CompanyProfile Apple     B) s@Stage3 = CompanyCard c s "YVA"  [AddVictory CompanyVictory 5 HappensOnce, GainFunding 4 HappensOnce]
+getResourceCard c@(CompanyProfile Google    B) s@Stage1 = CompanyCard c s "DA"   [AddVictory CompanyVictory 3 HappensOnce]
+getResourceCard c@(CompanyProfile Google    B) s@Stage2 = CompanyCard c s "MMY"  [Efficiency]
+getResourceCard c@(CompanyProfile Google    B) s@Stage3 = CompanyCard c s "DDDV" [ScientificBreakthrough]
+getResourceCard c@(CompanyProfile Instagram B) s@Stage1 = CompanyCard c s "MM"   [CheapExchange baseResources (S.fromList [NLeft, NRight])]
+getResourceCard c@(CompanyProfile Instagram B) s@Stage2 = CompanyCard c s "OO"   [AddVictory CompanyVictory 5 HappensOnce]
+getResourceCard c@(CompanyProfile Instagram B) s@Stage3 = CompanyCard c s "FFA"  [CopyCommunity]
+getResourceCard c@(CompanyProfile Amazon    B) s@Stage1 = CompanyCard c s "FF"   [AddVictory CompanyVictory 2 HappensOnce, Recycling]
+getResourceCard c@(CompanyProfile Amazon    B) s@Stage2 = CompanyCard c s "DDD"  [AddVictory CompanyVictory 1 HappensOnce, Recycling]
+getResourceCard c@(CompanyProfile Amazon    B) s@Stage3 = CompanyCard c s "YVA"  [Recycling]
+getResourceCard c@(CompanyProfile Microsoft B) s@Stage1 = CompanyCard c s "MM"   [AddVictory CompanyVictory 3 HappensOnce]
+getResourceCard c@(CompanyProfile Microsoft B) s@Stage2 = CompanyCard c s "OOO"  [AddVictory CompanyVictory 5 HappensOnce]
+getResourceCard c@(CompanyProfile Microsoft B) s@Stage3 = CompanyCard c s "DDD"  [AddVictory CompanyVictory 5 HappensOnce]
+getResourceCard c@(CompanyProfile Microsoft B) s@Stage4 = CompanyCard c s "OOOOA"[AddVictory CompanyVictory 7 HappensOnce]
 getResourceCard _ _ = error "Invalid card"
 
 communities :: [Card]

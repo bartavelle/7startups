@@ -19,7 +19,6 @@ data CardType = BaseResource            -- ^ The "brown" cards, provide basic re
               | Commercial              -- ^ The "gold" cards, mainly get you funding
               | HeadHunting             -- ^ The "red" cards, giving poaching power
               | Community               -- ^ The "purple" cards, giving victory points according to various conditions
-              | CompanyStage            -- ^ A fake card, representing your company
               deriving (Eq, Show, Ord)
 
 data Neighbor = NLeft
@@ -105,7 +104,13 @@ data Card = Card { _cName       :: T.Text
                  , _cCost       :: Cost
                  , _cFree       :: [T.Text]
                  , _cEffect     :: [Effect]
-                 } deriving (Ord, Eq, Show)
+                 }
+          | CompanyCard { _cCompany :: CompanyProfile
+                        , _cStage   :: CompanyStage
+                        , _cCost    :: Cost
+                        , _cEffect  :: [Effect]
+                        }
+          deriving (Ord,Eq,Show)
 
 type Exchange = M.Map Neighbor (MS.MultiSet Resource)
 

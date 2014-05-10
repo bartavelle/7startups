@@ -15,7 +15,7 @@ data CompanyStage = Project
                   | Stage2
                   | Stage3
                   | Stage4
-                  deriving (Ord,Eq,Enum)
+                  deriving (Ord,Eq,Enum,Show)
 
 data Company = Facebook     -- ^ Rhodes
              | Twitter      -- ^ Alexandria
@@ -27,10 +27,10 @@ data Company = Facebook     -- ^ Rhodes
              deriving (Eq, Ord, Enum, Show)
 
 data CompanySide = A | B
-                 deriving (Eq, Ord, Enum)
+                 deriving (Eq, Ord, Enum, Show)
 
 data CompanyProfile = CompanyProfile Company CompanySide
-                    deriving (Eq, Ord)
+                    deriving (Eq, Ord, Show)
 
 data Resource = Youthfulness -- ^ Glass
               | Vision       -- ^ Papyrus
