@@ -14,7 +14,9 @@ import Control.Lens
 import Data.Foldable (Foldable)
 import Control.Applicative
 import Data.Monoid
-
+import qualified Data.Text as T
+import qualified Data.Set as S
+import Data.Set.Lens
 import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
 
@@ -106,3 +108,7 @@ countConditionTrigger pid (ByStartupStage t) stt =
     let players = getTargets pid t stt
         stageValues = players ^.. traverse . pCompanyStage . to (fromIntegral . fromEnum)
     in  sum stageValues
+
+-- | The list of cards a player can build for free.
+freeConstruction :: PlayerState -> S.Set T.Text
+freeConstruction = setOf (pCards . traverse . cFree  . traverse)

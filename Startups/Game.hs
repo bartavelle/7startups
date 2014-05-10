@@ -128,7 +128,22 @@ playCard age pid extraResources card = do
     -- remove the chosen card from the card list, and remove the money from
     -- the player account
     let Cost _ fundCost = card ^. cCost
-    -- if we don't have enough resources here
+    let -- this tests whether a player has the opportunity capability ready
+        hasOpportunity = has (cardEffects . _Opportunity . ix age) playerState && (card ^? cType /= Nothing)
+        -- checks if a player has enough resources to play a card
+        enoughResources = fundCost <= playerState ^. pFunds && isAffordable playerState extraResources card
+        -- checks if a card is free (owns another card that permits free
+        -- construction)
+        isFree = case card ^? cName of
+                     Just n -> has (ix n) (freeConstruction playerState)
+                     Nothing -> False
+        -- checks if a player can build a given card. This is in the 'let'
+        -- part to take advantage of guards.
+        checkPrice | enoughResources = playermap . ix pid . pFunds -= fundCost
+                   | isFree = return ()
+                   | hasOpportunity = playermap . ix pid . cardEffects . _Opportunity . at age .= Nothing
+                   | otherwise = throwError "The player tried to play a card he did not have the resources for."
+    checkPrice
     if fundCost >= playerState ^. pFunds || not (isAffordable playerState extraResources card)
         -- and the Opportunity effect is available for the given age
         then if has (cardEffects . _Opportunity . ix age) playerState && (card ^? cType /= Nothing)
