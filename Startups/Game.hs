@@ -20,6 +20,7 @@ import qualified Data.MultiSet as MS
 import Data.Monoid
 import Data.List.Split (chunksOf)
 import Data.Maybe (fromMaybe)
+import Data.Traversable (for)
 
 -- | This is the initialization function. The state should be initialized
 -- with the correct list of players, but the player state or discard pile
@@ -137,7 +138,7 @@ playCard age pid extraResources card = do
     -- the player account
     let Cost _ fundCost = card ^. cCost
     let -- this tests whether a player has the opportunity capability ready
-        hasOpportunity = has (cardEffects . _Opportunity . ix age) playerState && (card ^? cType /= Nothing)
+        hasOpportunity = has (cardEffects . _Opportunity . ix age) playerState && has cType card
         -- checks if a player has enough resources to play a card
         enoughResources = fundCost <= playerState ^. pFunds && isAffordable playerState extraResources card
         -- checks if a card is free (owns another card that permits free
@@ -152,16 +153,6 @@ playCard age pid extraResources card = do
                    | hasOpportunity = playermap . ix pid . cardEffects . _Opportunity . at age .= Nothing
                    | otherwise = throwError "The player tried to play a card he did not have the resources for."
     checkPrice
-    if fundCost >= playerState ^. pFunds || not (isAffordable playerState extraResources card)
-        -- and the Opportunity effect is available for the given age
-        then if has (cardEffects . _Opportunity . ix age) playerState && (card ^? cType /= Nothing)
-                 -- then we remove the opportunity effect for this age, and
-                 -- build for free
-                 then playermap . ix pid . cardEffects . _Opportunity . at age .= Nothing
-                 -- or else we throw an error
-                 else throwError "The player tried to play a card he did not have the resources for."
-        -- otherwise we pay
-        else playermap . ix pid . pFunds -= fundCost
     -- add the card to the player hand
     playermap . ix pid . pCards %= (card :)
 
@@ -220,7 +211,7 @@ playTurn age turn rawcardmap = do
         \pid payout -> playermap . ix pid . pFunds += payout
     -- then add the money gained from cards
     ifor results $ \pid (hand, _, card) -> do
-        void $ flip traverse card $ \c -> do
+        void $ for card $ \c -> do
             f <- getCardFunding pid c
             playermap . ix pid . pFunds += f
         return hand
