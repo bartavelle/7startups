@@ -49,15 +49,6 @@ everyone = neighbors <> myself
 data Sharing = Shared | Kept
              deriving (Ord, Eq, Show)
 
-data VictoryType = PoachingVictory
-                 | FundingVictory
-                 | CompanyVictory
-                 | InfrastructureVictory
-                 | RnDVictory
-                 | CommercialVictory
-                 | CommunityVictory
-                 deriving (Ord, Eq, Show)
-
 data ResearchType = Scaling
                   | Programming
                   | CustomSolution

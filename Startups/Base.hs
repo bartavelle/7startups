@@ -4,6 +4,7 @@ module Startups.Base where
 
 import qualified Data.Set as S
 import Control.Lens
+import Data.Monoid
 
 data Age = Age1
          | Age2
@@ -50,7 +51,7 @@ advancedResources = S.fromList [Adoption, Vision, Youthfulness]
 newtype Poacher = Poacher { getPoacher :: Integer }
     deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
 
-newtype VictoryPoint = VictoryPoint { getVictory :: Integer }
+newtype VictoryPoint = VictoryPoint { getVictoryPoint :: Integer }
     deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
 
 newtype Funding = Funding { getFunding :: Integer }
@@ -59,9 +60,31 @@ newtype Funding = Funding { getFunding :: Integer }
 newtype PlayerCount = PlayerCount { getPlayerCount :: Integer }
     deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
 
+newtype Turn = Turn { getTurn :: Integer }
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+
+instance Monoid Poacher where
+    mempty = 0
+    Poacher a `mappend` Poacher b = Poacher (a + b)
+instance Monoid VictoryPoint where
+    mempty = 0
+    VictoryPoint a `mappend` VictoryPoint b = VictoryPoint (a + b)
+instance Monoid Funding where
+    mempty = 0
+    Funding a `mappend` Funding b = Funding (a + b)
+
 data PoachingOutcome = Defeat
                      | Victory Age
                      deriving (Eq, Ord, Show)
+
+data VictoryType = PoachingVictory
+                 | FundingVictory
+                 | CompanyVictory
+                 | InfrastructureVictory
+                 | RnDVictory
+                 | CommercialVictory
+                 | CommunityVictory
+                 deriving (Ord, Eq, Show)
 
 makePrisms ''Age
 makePrisms ''PoachingOutcome
