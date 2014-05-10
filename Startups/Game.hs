@@ -119,6 +119,14 @@ getCardFunding pid card = do
         computeFunding (n, cond) = countConditionTrigger pid cond stt * n
     return funding
 
+-- | Compute the victory points a card awards.
+getCardVictory :: GameStateOnly m => PlayerId -> Card -> m [(VictoryType, VictoryPoint)]
+getCardVictory pid card = do
+    stt <- use playermap
+    let victory = card ^.. cEffect . traverse . _AddVictory . to computeVictory
+        computeVictory (vtype, vpoints, vcond) = (vtype, countConditionTrigger pid vcond stt * vpoints)
+    return victory
+
 -- | Try to play a card, with some extra resources, provided that the
 -- player has enough.
 playCard :: NonInteractive m => Age -> PlayerId -> MS.MultiSet Resource -> Card -> m ()
@@ -254,7 +262,20 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
                 playermap . ix pid . pCards %= (card:)
 
 victoryPoints :: GameStateOnly m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
-victoryPoints = error "victoryPoints bot yet implemented"
+victoryPoints = use playermap >>= itraverse computeScore
+    where
+        computeScore pid playerState = do
+            let poaching = (PoachingVictory, playerState ^. pPoachingResults . traverse . to poachScore)
+                poachScore Defeat = -1
+                poachScore (Victory Age1) = 1
+                poachScore (Victory Age2) = 3
+                poachScore (Victory Age3) = 5
+                funding = (FundingVictory, fromIntegral (playerState ^. pFunds `div` 3))
+                scienceTypes = playerState ^.. cardEffects . _RnD
+                scienceJokers = length (playerState ^.. cardEffects . _ScientificBreakthrough)
+                research = (RnDVictory, scienceScore scienceTypes scienceJokers)
+            cardPoints <- mapM (getCardVictory pid) (playerState ^. pCards)
+            return $ M.fromListWith (+) $ poaching : funding : research : concat cardPoints
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.

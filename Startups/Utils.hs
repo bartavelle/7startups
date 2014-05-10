@@ -112,3 +112,10 @@ countConditionTrigger pid (ByStartupStage t) stt =
 -- | The list of cards a player can build for free.
 freeConstruction :: PlayerState -> S.Set T.Text
 freeConstruction = setOf (pCards . traverse . cFree  . traverse)
+
+-- | The science score computation.
+scienceScore :: [ResearchType] -> Int -> VictoryPoint
+scienceScore rt 0 =
+    let eachtypes = map (\t -> length (filter (== t) rt)) [Scaling, Programming, CustomSolution]
+    in  fromIntegral $ sum (map (\x -> x * x) eachtypes) + minimum eachtypes * 7
+scienceScore rt jokers = maximum [ scienceScore (t : rt) (jokers -1) | t <- [Scaling, Programming, CustomSolution] ]
