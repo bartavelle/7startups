@@ -189,6 +189,19 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
             return (Just ccard, 0)
     return (newhand, payout <> AddMap (M.singleton pid extrapay), cardp)
 
+-- | Play the end of age poaching.
+resolvePoaching :: GameStateOnly m => Age -> m ()
+resolvePoaching age = do
+    plyrs <- use playermap
+    let poachingScores = fmap (view (cardEffects . _Poaching)) plyrs
+    ifor_ plyrs $ \pid pstt -> do
+        let scores = pstt ^.. pNeighborhood . traverse . to (\p -> cmpScore $ view (ix p) poachingScores) . traverse
+            curScore = poachingScores ^. ix pid
+            cmpScore s | s > curScore = Just Defeat
+                       | s < curScore = Just $ Victory age
+                       | otherwise = Nothing
+        playermap . ix pid . pPoachingResults <>= scores
+
 -- | Play a turn :
 -- * Ask the player what he'd like to do with the proposed hand.
 -- * Remove the card the player chose from the hand, and play it.
@@ -236,6 +249,7 @@ playAge age = do
     cards <- dealCards age
     remaining <- foldM (\crds turn -> playTurn age turn crds >>= rotateHands age) cards [1 .. 7]
     discardpile <>= toListOf (traverse . traverse) remaining
+    resolvePoaching age
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.

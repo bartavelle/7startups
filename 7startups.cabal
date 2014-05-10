@@ -30,7 +30,7 @@ Test-Suite tests
     type:                 exitcode-stdio-1.0
     ghc-options:          -Wall
     other-extensions:     OverloadedStrings
-    build-depends:        7startups, base, containers, hspec, QuickCheck, lens
+    build-depends:        7startups, base, containers, hspec, QuickCheck, lens, text, random
     main-is:              tests.hs
     default-language:     Haskell2010
 
