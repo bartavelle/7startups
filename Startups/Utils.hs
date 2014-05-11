@@ -65,9 +65,9 @@ getExchangeCost pid neigh playrmap res =
     let cheapResources = playrmap ^. ix pid
                                    . cardEffects
                                    . _CheapExchange
-                                   . filtered (\(_,ns) -> has (ix neigh) ns)
+                                   . filtered (\(_,ns) -> ns ^. contains neigh)
                                    . _1
-    in  if has (ix res) cheapResources
+    in  if cheapResources ^. contains res
             then 1
             else 2
 
@@ -98,11 +98,11 @@ countConditionTrigger :: Num n => PlayerId -> Condition -> M.Map PlayerId Player
 countConditionTrigger _ HappensOnce _ = 1
 countConditionTrigger pid (ByPoachingResult t po) stt =
     let players = getTargets pid t stt
-        poachingTokens = players ^.. traverse . pPoachingResults . traverse . filtered (\e -> has (ix e) po)
+        poachingTokens = players ^.. traverse . pPoachingResults . traverse . filtered (\e -> po ^. contains e)
     in  fromIntegral (length poachingTokens)
 countConditionTrigger pid (PerCard t ct) stt =
     let players = getTargets pid t stt
-        matchingCards = players ^.. traverse . pCards . traverse . cType . filtered (\c -> has (ix c) ct)
+        matchingCards = players ^.. traverse . pCards . traverse . cType . filtered (\c -> ct ^. contains c)
     in  fromIntegral (length matchingCards)
 countConditionTrigger pid (ByStartupStage t) stt =
     let players = getTargets pid t stt

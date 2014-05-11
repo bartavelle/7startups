@@ -144,7 +144,7 @@ playCard age pid extraResources card = do
         -- checks if a card is free (owns another card that permits free
         -- construction)
         isFree = case card ^? cName of
-                     Just n -> has (ix n) (freeConstruction playerState)
+                     Just n -> freeConstruction playerState ^. contains n
                      Nothing -> False
         -- checks if a player can build a given card. This is in the 'let'
         -- part to take advantage of guards.
