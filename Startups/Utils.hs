@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Startups.Utils where
 
@@ -30,6 +31,22 @@ instance FunctorWithIndex k (AddMap k)
 instance FoldableWithIndex k (AddMap k)
 instance TraversableWithIndex k (AddMap k) where
     itraverse f (AddMap m) = AddMap <$> M.traverseWithKey f m
+
+type instance IxValue (AddMap k a) = a
+type instance Index (AddMap k a) = k
+
+instance Ord k => Ixed (AddMap k a) where
+    ix k f (AddMap m) = case M.lookup k m of
+        Just v  -> f v <&> \v' -> AddMap $ M.insert k v' m
+        Nothing -> pure (AddMap m)
+    {-# INLINE ix #-}
+
+instance Ord k => At (AddMap k a) where
+    at k f (AddMap m) = f mv <&> \r -> case r of
+        Nothing -> AddMap $ maybe m (const (M.delete k m)) mv
+        Just v' -> AddMap $ M.insert k v' m
+        where mv = M.lookup k m
+    {-# INLINE at #-}
 
 instance (Num n, Ord k) => Monoid (AddMap k n) where
     mempty = mempty
