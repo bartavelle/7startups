@@ -51,6 +51,17 @@ type Message = String
 data PlayerAction = PlayerAction ActionType Card
 data ActionType = Play | Drop | BuildCompany
 
+-- | Some types for non empty lists
+data NonEmpty a = NonEmpty a [a]
+
+_NonEmpty :: Prism' [a] (NonEmpty a)
+_NonEmpty = prism fromNonEmpty toNonEmpty
+    where
+        fromNonEmpty (NonEmpty x xs) = x : xs
+        toNonEmpty l = case l of
+                           [] -> Left l
+                           (x:xs) -> Right (NonEmpty x xs)
+
 -- | This describe the capabilities needed to write the rules, when no
 -- interaction with the player is required.
 type NonInteractive m = (MonadState GameState m, Monad m, MonadError Message m, Functor m, Applicative m)
@@ -61,15 +72,15 @@ class NonInteractive m => GameMonad m where
     playerDecision    :: Age -> Turn -> PlayerId -> [Card] -> GameState -> m (PlayerAction, Exchange)
     -- | Ask the player to chose a card, along with a descriptive message.
     -- This is used for the Recycling and CopyCommunity effects.
-    askCard           :: Age -> PlayerId -> [Card] -> GameState -> Message -> m Card
+    askCard           :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
     tellPlayer        :: PlayerId -> Message -> m () -- ^ Tell some information to a specific player
     generalMessage    :: Message -> m () -- ^ Broadcast some information
 
 -- We define "safe" versions of the `askCard` function, that makes sure the
 -- player doesn't introduce a new card in the game.
 
-askCardSafe :: GameMonad m => Age -> PlayerId -> [Card] -> GameState -> Message -> m Card
+askCardSafe :: GameMonad m => Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
 askCardSafe a p cl s m = do
     card <- askCard a p cl s m
-    when (card `notElem` cl) (throwError "The player tried to play a non proposed card")
+    when (card `notElem` (cl ^. re _NonEmpty)) (throwError "The player tried to play a non proposed card")
     return card

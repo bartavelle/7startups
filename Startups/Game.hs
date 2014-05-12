@@ -236,8 +236,12 @@ playAge age = do
     let recyclers = pm ^.. traverse . filtered (has (_2 . cardEffects . _Recycling)) . _1
     forM_ recyclers $ \pid -> do
         stt <- use id
-        card <- askCardSafe age pid (stt ^. discardpile) stt "Choose a card to recycle (play for free)"
-        playermap . ix pid . pCards %= (card :)
+        case stt ^? discardpile . _NonEmpty of
+            Just nedp -> do
+                card <- askCardSafe age pid nedp stt "Choose a card to recycle (play for free)"
+                playermap . ix pid . pCards %= (card :)
+                discardpile %= filter (/= card)
+            Nothing -> tellPlayer pid "The discard pile was empty, you can't recycle."
     -- resolve the "military" part
     resolvePoaching age
 
@@ -251,10 +255,12 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
             mvioletCards <- forM (stt ^.. pNeighborhood . traverse) $ \nid ->
                 toListOf (pCards . traverse . filtered (has (cType . _Community))) <$> getPlayerState nid
             let violetCards = concat mvioletCards
-            unless (null violetCards) $ do
-                gs <- use id
-                card <- askCardSafe Age3 pid violetCards gs "Which community would you like to copy ?"
-                playermap . ix pid . pCards %= (card:)
+            case violetCards ^? _NonEmpty of
+                Just nevc -> do
+                    gs <- use id
+                    card <- askCardSafe Age3 pid nevc gs "Which community would you like to copy ?"
+                    playermap . ix pid . pCards %= (card:)
+                Nothing -> tellPlayer pid "There were no violet cards bought by your neighbors. You can't use your copy capacity."
 
 victoryPoints :: GameStateOnly m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 victoryPoints = use playermap >>= itraverse computeScore
