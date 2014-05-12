@@ -17,7 +17,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Startups.CardList, Startups.Base, Startups.Cards, Startups.GameTypes, Startups.Utils, Startups.Game
+  exposed-modules:     Startups.CardList, Startups.Base, Startups.Cards, Startups.GameTypes, Startups.Utils, Startups.Game, Startups.PrettyPrint
   ghc-options:         -Wall
   -- other-modules:       
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving
