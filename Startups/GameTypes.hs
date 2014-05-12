@@ -23,11 +23,13 @@ data GameState = GameState { _playermap   :: M.Map PlayerId PlayerState
                            , _rnd         :: StdGen
                            }
 
+type Neighborhood = (PlayerId, PlayerId)
+
 data PlayerState = PlayerState { _pCompany         :: CompanyProfile
                                , _pCompanyStage    :: CompanyStage
                                , _pCards           :: [Card]
                                , _pFunds           :: Funding
-                               , _pNeighborhood    :: M.Map Neighbor PlayerId
+                               , _pNeighborhood    :: Neighborhood
                                , _pPoachingResults :: [PoachingOutcome]
                                }
 
@@ -39,6 +41,10 @@ cardEffects = pCards . traverse . cEffect . traverse
 
 playerEffects :: PlayerId -> Traversal' GameState Effect
 playerEffects pid = playermap . ix pid . cardEffects
+
+neighbor :: Neighbor -> Lens' PlayerState PlayerId
+neighbor NLeft  = pNeighborhood . _1
+neighbor NRight = pNeighborhood . _2
 
 type Message = String
 

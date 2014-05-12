@@ -46,7 +46,7 @@ initGame = do
         playermap . ix pid %=   (pCompany .~ profile)
                               . (pCards .~ [getResourceCard profile Project])
                               . (pFunds .~ 3)
-                              . (pNeighborhood .~ M.fromList [(NLeft, ln), (NRight, rn)])
+                              . (pNeighborhood .~ (ln, rn))
                               . (pCompanyStage .~ Project)
 
 -- | A simple wrapper for getting random numbers.
@@ -104,7 +104,7 @@ resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' exc
             stt <- use playermap
             let cost = getSum $ reslist ^. folded . to (Sum . getExchangeCost pid neigh stt)
                 playermoney = fromMaybe 0 (stt ^? ix pid . pFunds)
-                neighname = stt ^. ix pid . pNeighborhood . ix neigh
+                neighname = stt ^. ix pid . neighbor neigh
                 neigresources = stt ^. ix neighname . to (availableResources Exchange)
             when (cost > playermoney) (throwError "A player tried to perform an exchange without enough funding")
             unless (any (reslist `MS.isSubsetOf`) neigresources) (throwError "The neighbor doesn't have enough resources")
@@ -218,7 +218,7 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
     where
         rotatePlayer pid _ = do
             -- get the identifier of the correct neighbor
-            neighid <- use (playermap . ix pid . pNeighborhood . ix direction)
+            neighid <- use (playermap . ix pid . neighbor direction)
             -- get his hand
             return (cardmap ^. ix neighid)
         direction = if age == Age2

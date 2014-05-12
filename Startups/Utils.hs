@@ -106,7 +106,7 @@ getTargets pid targets stt = targets ^.. folded . to getTargets' . traverse
     where
         getPlayer p = stt ^. at p
         getTargets' Own = getPlayer pid
-        getTargets' (Neighboring n) = getPlayer pid >>= view (pNeighborhood . at n) >>= getPlayer
+        getTargets' (Neighboring n) = getPlayer pid >>= Just . view (neighbor n) >>= getPlayer
 
 -- | Given a condition, counts how often it hits. It can return an
 -- arbitrary Num because we will multiply this results with Funding or

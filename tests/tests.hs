@@ -32,10 +32,10 @@ testState = GameState (M.fromList players) discard (mkStdGen 5)
         ppam = CompanyProfile Apple B
         ppoum = CompanyProfile Google A
         pbob = CompanyProfile Twitter A
-        pim  = PlayerState ppim Project pimcards 1 (M.fromList [(NLeft, "pam"), (NRight, "bob")]) []
-        pam  = PlayerState ppam Project pamcards 3 (M.fromList [(NLeft, "poum"), (NRight, "pim")]) []
-        poum = PlayerState ppoum Project poumcards 6 (M.fromList [(NLeft, "bob"), (NRight, "pam")]) []
-        bob  = PlayerState pbob Project bobcards 5 (M.fromList [(NLeft, "pim"), (NRight, "poum")]) []
+        pim  = PlayerState ppim Project pimcards 1 ("pam", "bob") []
+        pam  = PlayerState ppam Project pamcards 3 ("poum", "pim") []
+        poum = PlayerState ppoum Project poumcards 6 ("bob", "pam") []
+        bob  = PlayerState pbob Project bobcards 5 ("pim", "poum") []
         pimcards = map (getResourceCard ppim) [Project .. Stage1] <> map getCard [ "Cloud Servers"
                                                                                  , "Marketroid"
                                                                                  , "Company Nerf Battles"
