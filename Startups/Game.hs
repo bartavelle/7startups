@@ -111,23 +111,6 @@ resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' exc
             playermap . ix pid . pFunds -= cost
             pure (reslist, AddMap (M.singleton neighname cost))
 
--- | Compute the money that a card gives to a player
-getCardFunding :: GameStateOnly m => PlayerId -> Card -> m Funding
-getCardFunding pid card = do
-    stt <- use playermap
-    -- note how we exploit the fact that ^. behaves like foldMap here
-    let funding = card ^. cEffect . traverse . _GainFunding . to computeFunding
-        computeFunding (n, cond) = countConditionTrigger pid cond stt * n
-    return funding
-
--- | Compute the victory points a card awards.
-getCardVictory :: GameStateOnly m => PlayerId -> Card -> m [(VictoryType, VictoryPoint)]
-getCardVictory pid card = do
-    stt <- use playermap
-    let victory = card ^.. cEffect . traverse . _AddVictory . to computeVictory
-        computeVictory (vtype, vpoints, vcond) = (vtype, countConditionTrigger pid vcond stt * vpoints)
-    return victory
-
 -- | Try to play a card, with some extra resources, provided that the
 -- player has enough.
 playCard :: NonInteractive m => Age -> PlayerId -> MS.MultiSet Resource -> Card -> m ()
@@ -225,7 +208,7 @@ playTurn age turn rawcardmap = do
     -- then add the money gained from cards
     ifor results $ \pid (hand, _, card) -> do
         void $ for card $ \c -> do
-            f <- getCardFunding pid c
+            f <- getCardFunding pid c <$> use playermap
             playermap . ix pid . pFunds += f
         return hand
     -- TODO recycling capability
@@ -279,8 +262,9 @@ victoryPoints = use playermap >>= itraverse computeScore
                 scienceTypes = playerState ^.. cardEffects . _RnD
                 scienceJokers = length (playerState ^.. cardEffects . _ScientificBreakthrough)
                 research = (RnDVictory, scienceScore scienceTypes scienceJokers)
-            cardPoints <- mapM (getCardVictory pid) (playerState ^. pCards)
-            return $ M.fromListWith (+) $ poaching : funding : research : concat cardPoints
+            stt <- use playermap
+            let cardPoints = playerState ^.. pCards . traverse . to (\c -> getCardVictory pid c stt) . folded
+            return $ M.fromListWith (+) $ poaching : funding : research : cardPoints
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.

@@ -136,3 +136,16 @@ scienceScore rt 0 =
     let eachtypes = map (\t -> length (filter (== t) rt)) [Scaling, Programming, CustomSolution]
     in  fromIntegral $ sum (map (\x -> x * x) eachtypes) + minimum eachtypes * 7
 scienceScore rt jokers = maximum [ scienceScore (t : rt) (jokers -1) | t <- [Scaling, Programming, CustomSolution] ]
+
+-- | Compute the money that a card gives to a player. Note how we exploit the fact that ^. behaves like foldMap here.
+getCardFunding :: PlayerId -> Card -> M.Map PlayerId PlayerState -> Funding
+getCardFunding pid card stt = card ^. cEffect . traverse . _GainFunding . to computeFunding
+    where
+        computeFunding (n, cond) = countConditionTrigger pid cond stt * n
+
+-- | Compute the victory points a card awards.
+getCardVictory :: PlayerId -> Card -> M.Map PlayerId PlayerState ->  [(VictoryType, VictoryPoint)]
+getCardVictory pid card stt = card ^.. cEffect . traverse . _AddVictory . to computeVictory
+    where
+        computeVictory (vtype, vpoints, vcond) = (vtype, countConditionTrigger pid vcond stt * vpoints)
+
