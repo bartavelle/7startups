@@ -211,7 +211,6 @@ playTurn age turn rawcardmap = do
             f <- getCardFunding pid c <$> use playermap
             playermap . ix pid . pFunds += f
         return hand
-    -- TODO recycling capability
 
 -- | Rotates the player hands, at the end of each turn.
 rotateHands :: GameMonad m => Age -> M.Map PlayerId [Card] -> m (M.Map PlayerId [Card])
@@ -232,6 +231,14 @@ playAge age = do
     cards <- dealCards age
     remaining <- foldM (\crds turn -> playTurn age turn crds >>= rotateHands age) cards [1 .. 7]
     discardpile <>= toListOf (traverse . traverse) remaining
+    -- now for recycling
+    pm <- itoList <$> use playermap
+    let recyclers = pm ^.. traverse . filtered (has (_2 . cardEffects . _Recycling)) . _1
+    forM_ recyclers $ \pid -> do
+        stt <- use id
+        card <- askCardSafe age pid (stt ^. discardpile) stt "Choose a card to recycle (play for free)"
+        playermap . ix pid . pCards %= (card :)
+    -- resolve the "military" part
     resolvePoaching age
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
