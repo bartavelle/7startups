@@ -88,3 +88,11 @@ askCardSafe a p cl s m = do
     card <- askCard a p cl s m
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
+
+instance PrettyE PlayerAction where
+    pe (PlayerAction a c) = a' <+> cardName c
+        where
+            a' = case a of
+                     Play         -> "played"
+                     Drop         -> "dropped"
+                     BuildCompany -> "increase the company stage"

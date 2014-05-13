@@ -203,10 +203,13 @@ playTurn age turn rawcardmap = do
                       else rawcardmap
     -- first gather all decisions
     decisions <- ifor cardmap $ \pid crds -> (crds,) <$> playerDecision age turn pid crds stt
-    results <- itraverse (resolveAction age) decisions
+    results <- ifor decisions $ \pid (crds,(action,exch)) -> do
+        generalMessage (showPlayerId pid <+> pe action)
+        resolveAction age pid (crds,(action,exch))
     -- first add the money gained from exchanges
-    ifor_ (results ^. traverse . _2) $
-        \pid payout -> playermap . ix pid . pFunds += payout
+    ifor_ (results ^. traverse . _2) $ \pid payout -> do
+        generalMessage (showPlayerId pid <+> "funds increased by" <+> pe payout <+> "thanks to exchanges.")
+        playermap . ix pid . pFunds += payout
     -- then add the money gained from cards
     ifor results $ \pid (hand, _, card) -> do
         void $ for card $ \c -> do
@@ -245,6 +248,7 @@ playAge age = do
         stt <- use id
         case stt ^? discardpile . _NonEmpty of
             Just nedp -> do
+                generalMessage (showPlayerId pid <+> "is going to use his recycle ability.")
                 card <- askCardSafe age pid nedp stt "Choose a card to recycle (play for free)"
                 playermap . ix pid . pCards %= (card :)
                 discardpile %= filter (/= card)
@@ -265,6 +269,7 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
             case violetCards ^? _NonEmpty of
                 Just nevc -> do
                     gs <- use id
+                    generalMessage (showPlayerId pid <+> "is going to use his community copy ability.")
                     card <- askCardSafe Age3 pid nevc gs "Which community would you like to copy ?"
                     playermap . ix pid . pCards %= (card:)
                 Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
