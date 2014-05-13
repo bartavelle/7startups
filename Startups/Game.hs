@@ -231,7 +231,12 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
 playAge :: GameMonad m => Age -> m ()
 playAge age = do
     cards <- dealCards age
-    remaining <- foldM (\crds turn -> playTurn age turn crds >>= rotateHands age) cards [1 .. 7]
+    let turnPlay crds turn = do
+            ncrds <- playTurn age turn crds
+            if turn == 7 -- The 7th turn is a hack for the efficiency capacity
+                then return ncrds
+                else rotateHands age ncrds
+    remaining <- foldM turnPlay cards [1 .. 7]
     discardpile <>= toListOf (traverse . traverse) remaining
     -- now for recycling
     pm <- itoList <$> use playermap
