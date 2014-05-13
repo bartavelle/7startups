@@ -2,10 +2,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Startups.GameTypes where
 
 import Startups.Base
 import Startups.Cards
+import Startups.PrettyPrint
 
 import Control.Lens
 
@@ -17,6 +19,9 @@ import Control.Applicative
 import System.Random
 
 type PlayerId = T.Text
+
+showPlayerId :: PlayerId -> PrettyDoc
+showPlayerId = emph . pe
 
 data GameState = GameState { _playermap   :: M.Map PlayerId PlayerState
                            , _discardpile :: [Card]
@@ -46,7 +51,7 @@ neighbor :: Neighbor -> Lens' PlayerState PlayerId
 neighbor NLeft  = pNeighborhood . _1
 neighbor NRight = pNeighborhood . _2
 
-type Message = String
+type Message = PrettyDoc
 
 data PlayerAction = PlayerAction ActionType Card
 data ActionType = Play | Drop | BuildCompany
@@ -76,11 +81,10 @@ class NonInteractive m => GameMonad m where
     tellPlayer        :: PlayerId -> Message -> m () -- ^ Tell some information to a specific player
     generalMessage    :: Message -> m () -- ^ Broadcast some information
 
--- We define "safe" versions of the `askCard` function, that makes sure the
+-- We define a "safe" version of the `askCard` function, that makes sure the
 -- player doesn't introduce a new card in the game.
-
 askCardSafe :: GameMonad m => Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
 askCardSafe a p cl s m = do
     card <- askCard a p cl s m
-    when (card `notElem` (cl ^. re _NonEmpty)) (throwError "The player tried to play a non proposed card")
+    when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card

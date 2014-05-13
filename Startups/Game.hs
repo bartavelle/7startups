@@ -1,6 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Startups.Game where
 
@@ -9,6 +10,7 @@ import Startups.Utils
 import Startups.Base
 import Startups.Cards
 import Startups.CardList
+import Startups.PrettyPrint
 
 import Control.Lens
 import Control.Monad
@@ -87,7 +89,7 @@ dealCards age = do
 -- | A helper for retrieving the player state.
 getPlayerState :: NonInteractive m => PlayerId -> m PlayerState
 getPlayerState pid = preuse (playermap . ix pid) >>= \m -> case m of
-                                                               Nothing -> throwError "Could not retrieve player state"
+                                                               Nothing -> throwError ("Could not retrieve" <+> showPlayerId pid <+> "state")
                                                                Just x -> return x
 
 -- | This transforms an exchange with a pair of neighbors with a list of
@@ -106,8 +108,8 @@ resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' exc
                 playermoney = fromMaybe 0 (stt ^? ix pid . pFunds)
                 neighname = stt ^. ix pid . neighbor neigh
                 neigresources = stt ^. ix neighname . to (availableResources Exchange)
-            when (cost > playermoney) (throwError "A player tried to perform an exchange without enough funding")
-            unless (any (reslist `MS.isSubsetOf`) neigresources) (throwError "The neighbor doesn't have enough resources")
+            when (cost > playermoney) (throwError (showPlayerId pid <+> "tried to perform an exchange without enough funding"))
+            unless (any (reslist `MS.isSubsetOf`) neigresources) (throwError (showPlayerId pid <> "'s neighbor doesn't have enough resources"))
             playermap . ix pid . pFunds -= cost
             pure (reslist, AddMap (M.singleton neighname cost))
 
@@ -134,7 +136,7 @@ playCard age pid extraResources card = do
         checkPrice | enoughResources = playermap . ix pid . pFunds -= fundCost
                    | isFree = return ()
                    | hasOpportunity = playermap . ix pid . cardEffects . _Opportunity . at age .= Nothing
-                   | otherwise = throwError "The player tried to play a card he did not have the resources for."
+                   | otherwise = throwError (showPlayerId pid <+> "tried to play a card he did not have the resources for.")
     checkPrice
     -- add the card to the player hand
     playermap . ix pid . pCards %= (card :)
@@ -152,7 +154,7 @@ playCard age pid extraResources card = do
 resolveAction :: NonInteractive m => Age -> PlayerId -> ([Card], (PlayerAction, Exchange)) -> m ([Card], AddMap PlayerId Funding, Maybe Card)
 resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
     -- check that the player didn't cheat
-    unless (card `elem` hand) (throwError "The player tried to play a card that was not in his hand")
+    unless (card `elem` hand) (throwError (showPlayerId pid <+> "tried to play a card that was not in his hand:" <+> shortCard card))
     -- resolve the exchanges
     (extraResources, payout) <- resolveExchange pid exch
     -- and now process the effect
@@ -167,7 +169,7 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
                 maxstage  = getMaxStage profile
                 nextstage = succ curstage
                 ccard     = getResourceCard profile nextstage
-            when (curstage == maxstage) (throwError "The player tried to increase the company stage beyond the limit.")
+            when (curstage == maxstage) (throwError (showPlayerId pid <+> "tried to increase the company stage beyond the limit."))
             playCard age pid extraResources ccard
             return (Just ccard, 0)
     return (newhand, payout <> AddMap (M.singleton pid extrapay), cardp)
@@ -241,7 +243,7 @@ playAge age = do
                 card <- askCardSafe age pid nedp stt "Choose a card to recycle (play for free)"
                 playermap . ix pid . pCards %= (card :)
                 discardpile %= filter (/= card)
-            Nothing -> tellPlayer pid "The discard pile was empty, you can't recycle."
+            Nothing -> tellPlayer pid (emph "The discard pile was empty, you can't recycle.")
     -- resolve the "military" part
     resolvePoaching age
 
@@ -260,7 +262,7 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
                     gs <- use id
                     card <- askCardSafe Age3 pid nevc gs "Which community would you like to copy ?"
                     playermap . ix pid . pCards %= (card:)
-                Nothing -> tellPlayer pid "There were no violet cards bought by your neighbors. You can't use your copy capacity."
+                Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
 
 victoryPoints :: GameStateOnly m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 victoryPoints = use playermap >>= itraverse computeScore
