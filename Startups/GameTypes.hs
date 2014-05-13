@@ -79,18 +79,18 @@ type NonInteractive m = (MonadState GameState m, Monad m, MonadError Message m, 
 type GameStateOnly m = (MonadState GameState m, Monad m, Functor m, Applicative m)
 
 data GameInstr a where
-    PlayerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameState -> GameInstr (PlayerAction, Exchange)
-    AskCard :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> GameInstr Card
-    TellPlayer :: PlayerId -> Message -> GameInstr ()
+    PlayerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameInstr (PlayerAction, Exchange)
+    AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr Card
+    TellPlayer     :: PlayerId -> Message -> GameInstr ()
     GeneralMessage :: Message -> GameInstr ()
-    ThrowError :: Message -> GameInstr a -- ^ Used for the error instance
-    CatchError :: GameMonad a -> (Message -> GameMonad a) -> GameInstr a
+    ThrowError     :: Message -> GameInstr a -- ^ Used for the error instance
+    CatchError     :: GameMonad a -> (Message -> GameMonad a) -> GameInstr a
 
 type GameMonad = ProgramT GameInstr (State GameState)
 
 -- | Ask the player which card he would like to play.
-playerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameState -> GameMonad (PlayerAction, Exchange)
-playerDecision a t p c s = singleton (PlayerDecision a t p c s)
+playerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameMonad (PlayerAction, Exchange)
+playerDecision a t p c = singleton (PlayerDecision a t p c)
 
 -- | Tell some information to a specific player
 tellPlayer :: PlayerId -> Message -> GameMonad ()
@@ -108,9 +108,9 @@ instance MonadError PrettyDoc (ProgramT GameInstr (State GameState)) where
 -- This is used for the Recycling and CopyCommunity effects.
 -- We define a "safe" version of the `askCard` function, that makes sure the
 -- player doesn't introduce a new card in the game.
-askCardSafe :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> GameMonad Card
-askCardSafe a p cl s m = do
-    card <- singleton (AskCard a p cl s m)
+askCardSafe :: Age -> PlayerId -> NonEmpty Card -> Message -> GameMonad Card
+askCardSafe a p cl m = do
+    card <- singleton (AskCard a p cl m)
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
 

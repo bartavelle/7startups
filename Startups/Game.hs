@@ -202,7 +202,7 @@ playTurn age turn rawcardmap = do
                       then M.filterWithKey (\pid _ -> has (playerEffects pid . _Efficiency) stt) rawcardmap
                       else rawcardmap
     -- first gather all decisions
-    decisions <- ifor cardmap $ \pid crds -> (crds,) <$> playerDecision age turn pid crds stt
+    decisions <- ifor cardmap $ \pid crds -> (crds,) <$> playerDecision age turn pid crds
     results <- ifor decisions $ \pid (crds,(action,exch)) -> do
         generalMessage (showPlayerId pid <+> pe action)
         resolveAction age pid (crds,(action,exch))
@@ -249,7 +249,7 @@ playAge age = do
         case stt ^? discardpile . _NonEmpty of
             Just nedp -> do
                 generalMessage (showPlayerId pid <+> "is going to use his recycle ability.")
-                card <- askCardSafe age pid nedp stt "Choose a card to recycle (play for free)"
+                card <- askCardSafe age pid nedp "Choose a card to recycle (play for free)"
                 playermap . ix pid . pCards %= (card :)
                 discardpile %= filter (/= card)
             Nothing -> tellPlayer pid (emph "The discard pile was empty, you can't recycle.")
@@ -268,9 +268,8 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
             let violetCards = concat mvioletCards
             case violetCards ^? _NonEmpty of
                 Just nevc -> do
-                    gs <- use id
                     generalMessage (showPlayerId pid <+> "is going to use his community copy ability.")
-                    card <- askCardSafe Age3 pid nevc gs "Which community would you like to copy ?"
+                    card <- askCardSafe Age3 pid nevc "Which community would you like to copy ?"
                     playermap . ix pid . pCards %= (card:)
                 Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
 
