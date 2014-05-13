@@ -193,7 +193,7 @@ resolvePoaching age = do
 --
 -- Not that all cards effects are revealed simultaneously, and all cards
 -- that let player gain money must be played after all cards are played.
-playTurn :: GameMonad m => Age -> Turn -> M.Map PlayerId [Card] -> m (M.Map PlayerId [Card])
+playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad (M.Map PlayerId [Card])
 playTurn age turn rawcardmap = do
     stt <- use id
     -- compute the list of players that are playing this turn. Only players
@@ -218,7 +218,7 @@ playTurn age turn rawcardmap = do
         return hand
 
 -- | Rotates the player hands, at the end of each turn.
-rotateHands :: GameMonad m => Age -> M.Map PlayerId [Card] -> m (M.Map PlayerId [Card])
+rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad (M.Map PlayerId [Card])
 rotateHands age cardmap = itraverse rotatePlayer cardmap
     where
         rotatePlayer pid _ = do
@@ -231,7 +231,7 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
                         else NRight
 
 -- | Play a whole age
-playAge :: GameMonad m => Age -> m ()
+playAge :: Age -> GameMonad ()
 playAge age = do
     cards <- dealCards age
     let turnPlay crds turn = do
@@ -258,7 +258,7 @@ playAge age = do
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.
-checkCopyCommunity :: GameMonad m => m ()
+checkCopyCommunity :: GameMonad ()
 checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
     where
         checkPlayer pid stt = when (has (cardEffects . _CopyCommunity) stt) $ do
@@ -293,7 +293,7 @@ victoryPoints = use playermap >>= itraverse computeScore
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.
-playGame :: GameMonad m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
+playGame :: GameMonad (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 playGame = do
     initGame
     mapM_ playAge [Age1 .. Age3]

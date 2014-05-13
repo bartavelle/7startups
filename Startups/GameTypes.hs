@@ -1,8 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GADTs #-}
+
 module Startups.GameTypes where
 
 import Startups.Base
@@ -13,10 +17,12 @@ import Control.Lens
 
 import qualified Data.Text as T
 import qualified Data.Map.Strict as M
+import Control.Monad.Operational
 import Control.Monad.State.Strict
 import Control.Monad.Error
 import Control.Applicative
 import System.Random
+
 
 type PlayerId = T.Text
 
@@ -72,20 +78,39 @@ _NonEmpty = prism fromNonEmpty toNonEmpty
 type NonInteractive m = (MonadState GameState m, Monad m, MonadError Message m, Functor m, Applicative m)
 type GameStateOnly m = (MonadState GameState m, Monad m, Functor m, Applicative m)
 
-class NonInteractive m => GameMonad m where
-    -- | Ask the player which card he would like to play.
-    playerDecision    :: Age -> Turn -> PlayerId -> [Card] -> GameState -> m (PlayerAction, Exchange)
-    -- | Ask the player to chose a card, along with a descriptive message.
-    -- This is used for the Recycling and CopyCommunity effects.
-    askCard           :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
-    tellPlayer        :: PlayerId -> Message -> m () -- ^ Tell some information to a specific player
-    generalMessage    :: Message -> m () -- ^ Broadcast some information
+data GameInstr a where
+    PlayerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameState -> GameInstr (PlayerAction, Exchange)
+    AskCard :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> GameInstr Card
+    TellPlayer :: PlayerId -> Message -> GameInstr ()
+    GeneralMessage :: Message -> GameInstr ()
+    ThrowError :: Message -> GameInstr a -- ^ Used for the error instance
+    CatchError :: GameMonad a -> (Message -> GameMonad a) -> GameInstr a
 
+type GameMonad = ProgramT GameInstr (State GameState)
+
+-- | Ask the player which card he would like to play.
+playerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameState -> GameMonad (PlayerAction, Exchange)
+playerDecision a t p c s = singleton (PlayerDecision a t p c s)
+
+-- | Tell some information to a specific player
+tellPlayer :: PlayerId -> Message -> GameMonad ()
+tellPlayer p = singleton . TellPlayer p
+
+-- | Broadcast some information
+generalMessage :: Message -> GameMonad ()
+generalMessage = singleton . GeneralMessage
+
+instance MonadError PrettyDoc (ProgramT GameInstr (State GameState)) where
+    throwError = singleton . ThrowError
+    catchError a handler = singleton (CatchError a handler)
+
+-- | Ask the player to chose a card, along with a descriptive message.
+-- This is used for the Recycling and CopyCommunity effects.
 -- We define a "safe" version of the `askCard` function, that makes sure the
 -- player doesn't introduce a new card in the game.
-askCardSafe :: GameMonad m => Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
+askCardSafe :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> GameMonad Card
 askCardSafe a p cl s m = do
-    card <- askCard a p cl s m
+    card <- singleton (AskCard a p cl s m)
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
 
