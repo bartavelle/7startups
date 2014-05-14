@@ -85,6 +85,7 @@ data GameInstr a where
     AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr Card
     TellPlayer     :: PlayerId -> Message -> GameInstr ()
     GeneralMessage :: Message -> GameInstr ()
+    ActionsRecap   :: M.Map PlayerId (PlayerAction, Exchange) -> GameInstr ()
     ThrowError     :: Message -> GameInstr a -- ^ Used for the error instance
     CatchError     :: GameMonad a -> (Message -> GameMonad a) -> GameInstr a
 
@@ -101,6 +102,10 @@ tellPlayer p = singleton . TellPlayer p
 -- | Broadcast some information
 generalMessage :: Message -> GameMonad ()
 generalMessage = singleton . GeneralMessage
+
+-- | Gives a quick rundown of all actions
+actionRecap :: M.Map PlayerId (PlayerAction, Exchange) -> GameMonad ()
+actionRecap = singleton . ActionsRecap
 
 instance MonadError PrettyDoc (ProgramT GameInstr (State GameState)) where
     throwError = singleton . ThrowError

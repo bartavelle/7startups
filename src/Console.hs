@@ -11,16 +11,17 @@ import Control.Lens
 import Control.Applicative
 import System.Random
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Data.Char (isDigit)
 
 readNumber :: IO Int
 readNumber = do
     n <- getLine
-    return $ if all (\x -> x >= '0' && x <= '9') n
+    return $ if all isDigit n
         then read n
         else -1
 
 consoleDict :: OperationDict IO
-consoleDict = OperationDict pd ac tp gm
+consoleDict = OperationDict pd ac ar tp gm
     where
         pd age turn pid necards stt = do
             let cards = _NonEmpty # necards
@@ -49,7 +50,8 @@ consoleDict = OperationDict pd ac tp gm
                 _ -> (cards !!) <$> randomRIO (0, length cards - 1)
         tp "you" msg = print (PP.pretty msg)
         tp _ _ = return ()
-        gm msg = print (PP.pretty msg)
+        gm msg  = print (PP.pretty msg)
+        ar stt actions = print (PP.pretty (displayActions (stt ^. playermap) actions))
 
 main :: IO ()
 main = do

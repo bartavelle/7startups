@@ -28,23 +28,37 @@ cardpreview pid pmap card =
             (_, 0) -> brackets pf
             _      -> brackets (pf <> "/" <> pvp)
 
+data ShowMode = Private | Public
+              deriving Eq
+
+playerActionDesc :: ShowMode -> PlayerId -> M.Map PlayerId PlayerState -> (PlayerAction, Exchange, Maybe SpecialInformation) -> PrettyDoc
+playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc a <+> secret (cardName card)
+                                                                                  <+> exchdesc exch
+                                                                                  <> sidesc si
+    where
+        secret n = if showmode == Private
+                       then n
+                       else mempty
+        actiondesc Play = withCardColor Infrastructure "Play"
+        actiondesc Drop = withCardColor HeadHunting    "Drop"
+        actiondesc BuildCompany = withCardColor Community "Build a company stage using"
+        nn n = pmap ^. ix pid . neighbor n
+        exchdesc = sepBy ", " . map (uncurry exchdesc') . itoList
+        exchdesc' neigh resources = "exch." <+> F.foldMap pe resources
+                                            <+> "with"
+                                            <+> showPlayerId (nn neigh)
+                                            <+> "for"
+                                            <+> pe (F.foldMap (getExchangeCost pid neigh pmap) resources)
+        sidesc (Just UseOpportunity) = " using the opportunity capability"
+        sidesc Nothing = mempty
+
+
 playerActionsDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> [(PlayerAction, Exchange, Maybe SpecialInformation)] -> PrettyDoc
 playerActionsDialog pid pmap clist actions =
         "Your hand:"
         </> vcat [ shortCard card <+> cardpreview pid pmap card | card <- clist ]
         </> "What are you going to play ?"
-        </> vcat [ numerical (n :: Int) <> ") " <> desc pa | (n,pa) <- zip [0..] actions ]
-    where
-        desc (PlayerAction a card, exch, si) = actiondesc a <+> cardName card
-                                                            <+> exchdesc exch
-                                                            <> sidesc si
-        actiondesc Play = withCardColor Infrastructure "Play"
-        actiondesc Drop = withCardColor HeadHunting    "Drop"
-        actiondesc BuildCompany = withCardColor Community "Build a company stage using"
-        nn n = pmap ^. ix pid . neighbor n
-        exchdesc = sepBy ", " . map (\(n,v) -> "Exchanged" <+> F.foldMap pe v <+> "with" <+> showPlayerId (nn n)) . itoList
-        sidesc (Just UseOpportunity) = " using the opportunity capability"
-        sidesc Nothing = mempty
+        </> vcat [ numerical (n :: Int) <> ") " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] actions ]
 
 cardChoiceDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> PrettyDoc
 cardChoiceDialog pid pmap cards = vcat [ numerical (n :: Int) <> ") " <> desc c | (n,c) <- zip [0..] cards ]
@@ -74,3 +88,5 @@ quicksituation age turn stt = vcat $ hdr : map (\(n,ps) -> showPlayerId n <+> br
         vicmap = victorydetails & traverse %~ (mconcat . M.elems)
         hdr = "Age" <+> pe age <+> ", turn" <+> numerical turn
 
+displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange) -> PrettyDoc
+displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Private pid pmap (pa, exch, Nothing) | (pid, (pa, exch)) <- M.toList actionmap ]

@@ -240,5 +240,5 @@ instance PP.Pretty PrettyElement where
         PConflict (Victory Age2)   -> PP.red "+3"
         PConflict (Victory Age3)   -> PP.red "+5"
         PCardType t                -> prettyColor (PColorCard t) (fromString (show t))
-        PResearch r                -> PP.green $ PP.char (head (show r))
+        PResearch r                -> PP.dullgreen $ PP.char (head (show r))
         PCompany (CompanyProfile c s) -> PP.string (show c) <> PP.string (show s)

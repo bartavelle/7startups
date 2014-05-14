@@ -78,7 +78,8 @@ shuffle xs = do
 dealCards :: GameStateOnly m => Age -> m (M.Map PlayerId [Card])
 dealCards age = do
     playerlst <- playerList
-    let agecards = filter (\c -> c ^? cAge == Just age) allcards
+    let agecards = filter (\c -> c ^? cAge == Just age && correctPlayerCount c) allcards
+        correctPlayerCount = (== Just True) . preview (cMinplayers . to (<= fromIntegral playerCount))
         communityCount = playerCount + 2
         playerCount = length playerlst
     com <- if age == Age3
@@ -207,12 +208,10 @@ playTurn age turn rawcardmap = do
             Nothing -> throwError "We managed to get an empty hand to play, this should never happen"
     -- first gather all decisions
     decisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
-    results <- ifor decisions $ \pid (crds,(action,exch)) -> do
-        generalMessage (showPlayerId pid <+> pe action)
-        resolveAction age pid (crds,(action,exch))
+    actionRecap (fmap snd decisions)
+    results <- itraverse (resolveAction age) decisions
     -- first add the money gained from exchanges
-    ifor_ (results ^. traverse . _2) $ \pid payout -> when (payout /= 0) $ do
-        generalMessage (showPlayerId pid <+> "funds increased by" <+> pe payout <+> "thanks to exchanges.")
+    ifor_ (results ^. traverse . _2) $ \pid payout ->
         playermap . ix pid . pFunds += payout
     -- then add the money gained from cards
     ifor results $ \pid (hand, _, card) -> do
@@ -257,6 +256,7 @@ playAge age = do
             Just nedp -> do
                 generalMessage (showPlayerId pid <+> "is going to use his recycle ability.")
                 card <- askCardSafe age pid nedp "Choose a card to recycle (play for free)"
+                generalMessage (showPlayerId pid <+> "recycled" <+> shortCard card)
                 playermap . ix pid . pCards %= (card :)
                 discardpile %= filter (/= card)
             Nothing -> tellPlayer pid (emph "The discard pile was empty, you can't recycle.")
@@ -277,6 +277,7 @@ checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
                 Just nevc -> do
                     generalMessage (showPlayerId pid <+> "is going to use his community copy ability.")
                     card <- askCardSafe Age3 pid nevc "Which community would you like to copy ?"
+                    generalMessage (showPlayerId pid <+> "copied" <+> shortCard card)
                     playermap . ix pid . pCards %= (card:)
                 Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
 

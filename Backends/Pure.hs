@@ -11,7 +11,7 @@ import Control.Lens
 import qualified Data.Map.Strict as M
 
 pureDict :: OperationDict (State StdGen)
-pureDict = OperationDict pd ac tp gm
+pureDict = OperationDict pd ac ar tp gm
     where
         roll :: Int -> State StdGen Int
         roll x = do
@@ -25,6 +25,7 @@ pureDict = OperationDict pd ac tp gm
             n <- roll (length x)
             let (pe,e,_) = x !! n
             return (pe, e)
+        ar _ _ = return ()
         ac _ _ necards _ _ =
             let lcards = _NonEmpty # necards
             in  fmap (lcards !!) (roll (length lcards))

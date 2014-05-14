@@ -5,11 +5,13 @@ import Startups.Base
 import Startups.Cards
 import Startups.GameTypes
 
+import qualified Data.Map.Strict as M
 import Control.Monad.Operational
 import Control.Monad.State.Strict
 
 data OperationDict m = OperationDict { _doPlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameState -> m (PlayerAction, Exchange)
                                      , _doAskCard        :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
+                                     , _doActionsRecap   :: GameState -> M.Map PlayerId (PlayerAction, Exchange) -> m ()
                                      , _doTellPlayer     :: PlayerId -> Message -> m ()
                                      , _doGeneralMessage :: Message -> m ()
                                      }
@@ -34,6 +36,7 @@ evalInstrGen dico gamestate (a :>>= f) =
     in  case a of
             PlayerDecision age turn pid clist -> _doPlayerDecision dico age turn pid clist gamestate >>= runC
             AskCard age pid cards msg -> _doAskCard dico age pid cards gamestate msg >>= runC
+            ActionsRecap actions -> _doActionsRecap dico gamestate actions >>= runC
             TellPlayer pid msg -> _doTellPlayer dico pid msg >>= runC
             GeneralMessage msg -> _doGeneralMessage dico msg >>= runC
             ThrowError err -> return (gamestate, Left err)
