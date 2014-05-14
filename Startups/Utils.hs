@@ -23,6 +23,7 @@ import Data.Set.Lens
 import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
 import System.Random (StdGen)
+import Data.List (nub)
 
 -- | We will use this type to define a custom monoid instance for Map k n,
 -- when n is numerical. This will be used to simplify some expressions. It
@@ -242,7 +243,7 @@ allowableActions age pid cards players =
             return (mpstate, availableResources Exchange lpstate, availableResources Exchange rpstate)
         -- all cards can always be dropped
         dropped = map ( (,mempty,Nothing) . PlayerAction Drop ) cards
-    in  case playerNeighborInformation of
+    in  nub $ (++ dropped) $ case playerNeighborInformation of
             Just (playerstate, lplayer, rplayer) ->
                 -- the company stuff, checks if we can build it
                 let cstage     = playerstate ^. pCompanyStage
@@ -257,8 +258,8 @@ allowableActions age pid cards players =
                                    guard (has _Nothing si)
                                    cardToDrop <- cards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
-                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction ++ dropped
-            _ -> dropped
+                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction
+            _ -> []
 
 -- | Creates an initial gamestate.
 initialGameState :: StdGen -> [PlayerId] -> GameState
@@ -266,3 +267,11 @@ initialGameState g playernames =
     let playerstate = PlayerState (CompanyProfile Microsoft A) Project [] 0 (mempty, mempty) []
         pmap = M.fromList $ zip playernames (repeat playerstate)
     in  GameState pmap [] g
+
+-- | Previews the effects of a card
+cardEffectPreview :: PlayerId -> Card -> M.Map PlayerId PlayerState -> (Funding, VictoryPoint)
+cardEffectPreview pid card pmap =
+    let f = getCardFunding pid card pmap
+        v = getCardVictory pid card pmap
+    in  (f, v ^. traverse . _2)
+

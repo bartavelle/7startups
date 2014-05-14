@@ -170,6 +170,7 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
                 nextstage = succ curstage
                 ccard     = getResourceCard profile nextstage
             when (curstage == maxstage) (throwError (showPlayerId pid <+> "tried to increase the company stage beyond the limit."))
+            playermap . ix pid . pCompanyStage %= succ
             playCard age pid extraResources ccard
             return (Just ccard, 0)
     return (newhand, payout <> AddMap (M.singleton pid extrapay), cardp)
@@ -210,7 +211,7 @@ playTurn age turn rawcardmap = do
         generalMessage (showPlayerId pid <+> pe action)
         resolveAction age pid (crds,(action,exch))
     -- first add the money gained from exchanges
-    ifor_ (results ^. traverse . _2) $ \pid payout -> do
+    ifor_ (results ^. traverse . _2) $ \pid payout -> when (payout /= 0) $ do
         generalMessage (showPlayerId pid <+> "funds increased by" <+> pe payout <+> "thanks to exchanges.")
         playermap . ix pid . pFunds += payout
     -- then add the money gained from cards

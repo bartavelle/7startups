@@ -60,7 +60,9 @@ neighbor NRight = pNeighborhood . _2
 type Message = PrettyDoc
 
 data PlayerAction = PlayerAction ActionType Card
+                  deriving Eq
 data ActionType = Play | Drop | BuildCompany
+                deriving Eq
 
 -- | Some types for non empty lists
 data NonEmpty a = NonEmpty a [a]
