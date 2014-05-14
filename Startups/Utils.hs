@@ -50,9 +50,9 @@ instance Ord k => At (AddMap k a) where
         where mv = M.lookup k m
     {-# INLINE at #-}
 
-instance (Num n, Ord k) => Monoid (AddMap k n) where
+instance (Monoid n, Ord k) => Monoid (AddMap k n) where
     mempty = mempty
-    AddMap m1 `mappend` AddMap m2 = AddMap (M.unionWith (+) m1 m2)
+    AddMap m1 `mappend` AddMap m2 = AddMap (M.unionWith (<>) m1 m2)
 
 data ResourceQueryType = Exchange | OwnRes
                        deriving Eq
@@ -156,24 +156,80 @@ getCardVictory pid card stt = card ^.. cEffect . traverse . _AddVictory . to com
 data SpecialInformation = UseOpportunity
                         deriving Eq
 
--- | List all the ways a given card can be built
+-- | Gets the list of cheap resources, for each neighbor
+getCheapExchanges :: PlayerState -> M.Map Neighbor (S.Set Resource)
+getCheapExchanges ps = M.fromListWith (<>) $ do
+    (resources, neighs) <- ps ^.. cardEffects . _CheapExchange
+    n <- S.toList neighs
+    return (n, resources)
+
+-- | This function tries to find all possible exchanges that satisfy
+-- a given research
+-- This function might need refactoring as it is a bit ugly ...
+findExchange :: MS.MultiSet Resource -> M.Map Neighbor (S.Set Resource) -> MS.MultiSet Resource -> MS.MultiSet Resource -> [(Exchange, Funding)]
+findExchange toAcq cheapExchanges = runSearch (MS.toList toAcq)
+    where
+        cost v r = if has (ix v . ix r) cheapExchanges then 1 else 2
+        runSearch :: [Resource] -> MS.MultiSet Resource -> MS.MultiSet Resource -> [(Exchange, Funding)]
+        runSearch [] _ _ = [(mempty, 0)]
+        runSearch (t:ts) lp rp =
+            let lexchange = if MS.member t lp
+                                then map (addExchange NLeft) (runSearch ts (MS.delete t lp) rp)
+                                else []
+                rexchange = if MS.member t rp
+                                then map (addExchange NRight) (runSearch ts lp (MS.delete t rp))
+                                else []
+                addExchange v (e, m) = (M.insertWith (<>) v (MS.singleton t) e , m + cost v t)
+            in  lexchange ++ rexchange
+
+-- | List all the ways a given card can be built. This is the most tricky
+-- function.
 getCardActions :: Age -> PlayerState -> [MS.MultiSet Resource] -> [MS.MultiSet Resource] -> Card -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
 getCardActions age playerstate lplayer rplayer card
-    | alreadyBuilt ^. contains (view cName card) = []
+    -- We can't build 2 cards with the same name
+    | alreadyBuilt ^. contains cardname = []
+    -- We can have a card that enable free construction of this card
+    | freeConstruction playerstate ^. contains cardname = [build mempty Nothing]
+    -- We can have enough resources, but might prefer to use the
+    -- opportunity effect if a card costs money
+    | any (neededresources `MS.isSubsetOf`) myresources && (neededfunding <= myfunding) = if neededfunding > 0
+                                                                                              then build mempty Nothing : opportunity
+                                                                                              else [build mempty Nothing]
+    -- Otherwise, it's time to check for exchanges, and the opportunity
+    -- effect
+    | otherwise = map (`build` Nothing) bestExchange ++ opportunity
     where
+        -- this is an empty list unless the player has the opportunity
+        -- effect ready
+        opportunity = [ build mempty (Just UseOpportunity) | has opportunityEffect playerstate ]
+        -- this is a traversal that checks if the opportunity effect is
+        -- ready
+        opportunityEffect = cardEffects . _Opportunity . ix age
+        -- Some helpers ...
+        build e s = (PlayerAction Play card, e, s)
+        cardname = view cName card
         alreadyBuilt = setOf (pCards . traverse . cName) playerstate
         myresources = availableResources OwnRes playerstate
         myfunding = playerstate ^. pFunds
+        Cost neededresources neededfunding = card ^. cCost
+        -- This is suboptimal : we keep all exchanges that cost the least
+        -- amount of money. What would be better would be to also filter
+        -- the exchanges that give the same amount of money to the same
+        -- neighbors.
         bestExchange = map fst $ filter ((==leastFunding) . snd) checkExchange
         leastFunding = minimum (map snd checkExchange)
-        Cost neededresources neededfunding = card ^. cCost
+        -- This constructs all the possible exchanges, for all combinations
+        -- of resources for all players.
         checkExchange :: [(Exchange, Funding)]
         checkExchange = do
             guard (myfunding >= neededfunding)
             curresources <- myresources
             let resourcesToAcquire = neededresources `MS.difference` curresources
-            error "TODO"
-
+            lplayer' <- lplayer
+            rplayer' <- rplayer
+            (exchange, ecost) <- findExchange resourcesToAcquire (getCheapExchanges playerstate) lplayer' rplayer'
+            guard (ecost + neededfunding <= myfunding)
+            return (exchange, ecost)
 
 -- | List all possible actions a player can take, given a list of cards
 allowableActions :: Age -> PlayerId -> [Card] -> M.Map PlayerId PlayerState -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
@@ -187,7 +243,7 @@ allowableActions age pid cards players =
         dropped = map ( (,mempty,Nothing) . PlayerAction Drop ) cards
     in  case playerNeighborInformation of
             Just (playerstate, lplayer, rplayer) ->
-                -- the company stuff
+                -- the company stuff, checks if we can build it
                 let cstage     = playerstate ^. pCompanyStage
                     comp       = playerstate ^. pCompany
                     nstagecard = getResourceCard comp (succ cstage)
@@ -195,7 +251,9 @@ allowableActions age pid cards players =
                     compaction | cstage == maxstage = []
                                | otherwise = do
                                    (_, exch, si) <- getCardActions age playerstate lplayer rplayer nstagecard
-                                   guard (has _Nothing si) -- you can't build your company using a special ability
+                                   -- you can't build your company using a special ability. This is artificial,
+                                   -- this check should be done at the "getCardActions" part.
+                                   guard (has _Nothing si)
                                    cardToDrop <- cards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
                 in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction
