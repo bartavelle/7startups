@@ -236,7 +236,10 @@ playAge age = do
     cards <- dealCards age
     let turnPlay crds turn = do
             ncrds <- playTurn age turn crds
-            if turn == 7 -- The 7th turn is a hack for the efficiency capacity
+            -- The 7th turn is a hack for the efficiency capacity. In that
+            -- case, the hands should not be rotated as the rules stipulate
+            -- that the player can play the two cards he has in hands.
+            if turn == 6
                 then return ncrds
                 else rotateHands age ncrds
     remaining <- foldM turnPlay cards [1 .. 7]
