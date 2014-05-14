@@ -79,7 +79,7 @@ type NonInteractive m = (MonadState GameState m, Monad m, MonadError Message m, 
 type GameStateOnly m = (MonadState GameState m, Monad m, Functor m, Applicative m)
 
 data GameInstr a where
-    PlayerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameInstr (PlayerAction, Exchange)
+    PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr (PlayerAction, Exchange)
     AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr Card
     TellPlayer     :: PlayerId -> Message -> GameInstr ()
     GeneralMessage :: Message -> GameInstr ()
@@ -89,7 +89,7 @@ data GameInstr a where
 type GameMonad = ProgramT GameInstr (State GameState)
 
 -- | Ask the player which card he would like to play.
-playerDecision :: Age -> Turn -> PlayerId -> [Card] -> GameMonad (PlayerAction, Exchange)
+playerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameMonad (PlayerAction, Exchange)
 playerDecision a t p c = singleton (PlayerDecision a t p c)
 
 -- | Tell some information to a specific player

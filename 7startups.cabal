@@ -24,8 +24,10 @@ library
                         Startups.Utils,
                         Startups.Game,
                         Startups.PrettyPrint,
-                        Startups.Interpreter
+                        Startups.Interpreter,
+                        Backends.Pure
   ghc-options:         -Wall
+  ghc-prof-options:    -auto-all -caf-all
   -- other-modules:       
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving
   build-depends:       base >=4.7 && <4.8,
@@ -44,7 +46,7 @@ library
 Test-Suite tests
     hs-source-dirs:       tests
     type:                 exitcode-stdio-1.0
-    ghc-options:          -Wall
+    ghc-options:          -Wall -prof -auto-all
     other-extensions:     OverloadedStrings
     build-depends:        7startups, base, containers, hspec, QuickCheck, lens, text, random
     main-is:              tests.hs

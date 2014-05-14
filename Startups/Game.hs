@@ -201,8 +201,11 @@ playTurn age turn rawcardmap = do
     let cardmap = if turn == 7
                       then M.filterWithKey (\pid _ -> has (playerEffects pid . _Efficiency) stt) rawcardmap
                       else rawcardmap
+        convertCards crds = case crds ^? _NonEmpty of
+            Just n -> return n
+            Nothing -> throwError "We managed to get an empty hand to play, this should never happen"
     -- first gather all decisions
-    decisions <- ifor cardmap $ \pid crds -> (crds,) <$> playerDecision age turn pid crds
+    decisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
     results <- ifor decisions $ \pid (crds,(action,exch)) -> do
         generalMessage (showPlayerId pid <+> pe action)
         resolveAction age pid (crds,(action,exch))

@@ -22,12 +22,13 @@ import qualified Data.Set as S
 import Data.Set.Lens
 import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
+import System.Random (StdGen)
 
 -- | We will use this type to define a custom monoid instance for Map k n,
 -- when n is numerical. This will be used to simplify some expressions. It
 -- should be usable like a standard Map, so we will derive a few instances.
 newtype AddMap k n = AddMap { getAddMap :: M.Map k n }
-                     deriving (Eq, Ord, Functor, Foldable, Traversable)
+                     deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 instance FunctorWithIndex k (AddMap k)
 instance FoldableWithIndex k (AddMap k)
@@ -51,7 +52,7 @@ instance Ord k => At (AddMap k a) where
     {-# INLINE at #-}
 
 instance (Monoid n, Ord k) => Monoid (AddMap k n) where
-    mempty = mempty
+    mempty = AddMap mempty
     AddMap m1 `mappend` AddMap m2 = AddMap (M.unionWith (<>) m1 m2)
 
 data ResourceQueryType = Exchange | OwnRes
@@ -256,5 +257,12 @@ allowableActions age pid cards players =
                                    guard (has _Nothing si)
                                    cardToDrop <- cards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
-                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction
+                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction ++ dropped
             _ -> dropped
+
+-- | Creates an initial gamestate.
+initialGameState :: StdGen -> [PlayerId] -> GameState
+initialGameState g playernames =
+    let playerstate = PlayerState (CompanyProfile Microsoft A) Project [] 0 (mempty, mempty) []
+        pmap = M.fromList $ zip playernames (repeat playerstate)
+    in  GameState pmap [] g

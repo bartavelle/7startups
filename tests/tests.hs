@@ -6,6 +6,7 @@ import Startups.Cards
 import Startups.CardList
 import Startups.GameTypes
 import Startups.Utils
+import Backends.Pure
 
 import Control.Lens
 import Data.List (foldl')
@@ -14,6 +15,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Map.Strict as M
 import System.Random
+import Test.QuickCheck
 import Data.Monoid
 import Control.Monad
 import Data.Maybe (fromJust)
@@ -25,7 +27,7 @@ getCard n = case filter (\c -> c ^? cName == Just n) allcards of
 
 -- | Some game state that is good enough for testing things
 testState :: GameState
-testState = GameState (M.fromList players) discard (mkStdGen 5)
+testState = GameState (M.fromList players) [] (mkStdGen 5)
     where
         players = [ ("pim", pim), ("pam", pam), ("poum", poum), ("bob", bob )]
         ppim = CompanyProfile Facebook A
@@ -54,7 +56,6 @@ testState = GameState (M.fromList players) discard (mkStdGen 5)
                                                                        , "Financial Developer"
                                                                        , "Standing Desks"
                                                                        ]
-        discard = []
 
 main :: IO ()
 main = hspec $ do
@@ -74,3 +75,11 @@ main = hspec $ do
                 expected = S.fromList (map getResCost reslist)
                 actual = S.fromList $ availableResources OwnRes (fromJust (testState ^? playermap . ix pid))
             in  it ("Is correct for " <> T.unpack pid) $ actual `shouldBe` expected
+    describe "random games" $ do
+        let gs = do
+                seed <- arbitrary
+                nbplayers <- Test.QuickCheck.elements [3 .. 7]
+                return (seed, nbplayers :: Int)
+        it "end well" $ forAll gs $ \(seed, nbplayers) -> case pureGame (mkStdGen seed) (map (T.pack . show) [1 .. nbplayers]) of
+                                                              (_, Right _) -> True
+                                                              _ -> False
