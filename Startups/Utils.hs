@@ -9,12 +9,14 @@ module Startups.Utils where
 
 import Startups.Base
 import Startups.Cards
+import Startups.CardList
 import Startups.GameTypes
 
 import Control.Lens
 import Data.Foldable (Foldable)
 import Control.Applicative
 import Data.Monoid
+import Control.Monad
 import qualified Data.Text as T
 import qualified Data.Set as S
 import Data.Set.Lens
@@ -149,3 +151,52 @@ getCardVictory pid card stt = card ^.. cEffect . traverse . _AddVictory . to com
     where
         computeVictory (vtype, vpoints, vcond) = (vtype, countConditionTrigger pid vcond stt * vpoints)
 
+-- | A data structure that represents special capabilities that are used
+-- when playing a card.
+data SpecialInformation = UseOpportunity
+                        deriving Eq
+
+-- | List all the ways a given card can be built
+getCardActions :: Age -> PlayerState -> [MS.MultiSet Resource] -> [MS.MultiSet Resource] -> Card -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
+getCardActions age playerstate lplayer rplayer card
+    | alreadyBuilt ^. contains (view cName card) = []
+    where
+        alreadyBuilt = setOf (pCards . traverse . cName) playerstate
+        myresources = availableResources OwnRes playerstate
+        myfunding = playerstate ^. pFunds
+        bestExchange = map fst $ filter ((==leastFunding) . snd) checkExchange
+        leastFunding = minimum (map snd checkExchange)
+        Cost neededresources neededfunding = card ^. cCost
+        checkExchange :: [(Exchange, Funding)]
+        checkExchange = do
+            guard (myfunding >= neededfunding)
+            curresources <- myresources
+            let resourcesToAcquire = neededresources `MS.difference` curresources
+            error "TODO"
+
+
+-- | List all possible actions a player can take, given a list of cards
+allowableActions :: Age -> PlayerId -> [Card] -> M.Map PlayerId PlayerState -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
+allowableActions age pid cards players =
+    let playerNeighborInformation = do
+            mpstate <- players ^. at pid
+            lpstate <- players ^. at (mpstate ^. neighbor NLeft)
+            rpstate <- players ^. at (mpstate ^. neighbor NRight)
+            return (mpstate, availableResources Exchange lpstate, availableResources Exchange rpstate)
+        -- all cards can always be dropped
+        dropped = map ( (,mempty,Nothing) . PlayerAction Drop ) cards
+    in  case playerNeighborInformation of
+            Just (playerstate, lplayer, rplayer) ->
+                -- the company stuff
+                let cstage     = playerstate ^. pCompanyStage
+                    comp       = playerstate ^. pCompany
+                    nstagecard = getResourceCard comp (succ cstage)
+                    maxstage   = getMaxStage comp
+                    compaction | cstage == maxstage = []
+                               | otherwise = do
+                                   (_, exch, si) <- getCardActions age playerstate lplayer rplayer nstagecard
+                                   guard (has _Nothing si) -- you can't build your company using a special ability
+                                   cardToDrop <- cards
+                                   return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
+                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction
+            _ -> dropped
