@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- | Some pretty printing, with specific constructors for the game
 module Startups.PrettyPrint where
@@ -11,45 +9,46 @@ import Data.Monoid
 import Data.Maybe (fromMaybe)
 import Data.String
 import Control.Monad.Error
-import qualified Data.Sequence as Seq
-import Data.Sequence (Seq)
 import qualified Data.Text as T
 import qualified Data.Foldable as F
 import Data.List (intersperse)
 import Control.Lens
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-newtype PrettyDoc = PrettyDoc { getDoc :: Seq PrettyElement }
-                  deriving (Eq, Monoid)
+data PrettyDoc = RawText T.Text
+               | NewLine
+               | Space
+               | Emph PrettyDoc
+               | Colorize PColor PrettyDoc
+               | Indent Int PrettyDoc
+               | PDirection EffectDirection
+               | PNeighbor Neighbor
+               | PFund Funding
+               | PPoach Poacher
+               | PVictory VictoryPoint
+               | PPlayerCount PlayerCount
+               | PTurn Turn
+               | PResource Resource
+               | PAge Age
+               | PCompanyStage CompanyStage
+               | PConflict PoachingOutcome
+               | PCompany CompanyProfile
+               | PResearch ResearchType
+               | PCardType CardType
+               | PEmpty
+               | PCat PrettyDoc PrettyDoc
+               deriving Eq
 
-data PrettyElement = RawText T.Text
-                   | NewLine
-                   | Space
-                   | Emph PrettyDoc
-                   | Colorize PColor PrettyDoc
-                   | Indent Int PrettyDoc
-                   | PDirection EffectDirection
-                   | PNeighbor Neighbor
-                   | PFund Funding
-                   | PPoach Poacher
-                   | PVictory VictoryPoint
-                   | PPlayerCount PlayerCount
-                   | PTurn Turn
-                   | PResource Resource
-                   | PAge Age
-                   | PCompanyStage CompanyStage
-                   | PConflict PoachingOutcome
-                   | PCompany CompanyProfile
-                   | PResearch ResearchType
-                   | PCardType CardType
-                   deriving Eq
+instance Monoid PrettyDoc where
+    mappend = PCat
+    mempty = PEmpty
 
 data PColor = PColorCard CardType
             | PColorVictory VictoryType
             deriving Eq
 
 instance IsString PrettyDoc where
-    fromString = PrettyDoc . Seq.singleton . RawText . T.pack
+    fromString = RawText . T.pack
 
 instance Error PrettyDoc where
     noMsg = mempty
@@ -61,38 +60,38 @@ class PrettyE a where
 instance PrettyE PrettyDoc where
     pe = id
 instance PrettyE T.Text where
-    pe = PrettyDoc . Seq.singleton . RawText
+    pe = RawText
 instance PrettyE EffectDirection where
-    pe = PrettyDoc . Seq.singleton . PDirection
+    pe = PDirection
 instance PrettyE Neighbor where
-    pe = PrettyDoc . Seq.singleton . PNeighbor
+    pe = PNeighbor
 instance PrettyE Funding where
-    pe = PrettyDoc . Seq.singleton . PFund
+    pe = PFund
 instance PrettyE Poacher where
-    pe = PrettyDoc . Seq.singleton . PPoach
+    pe = PPoach
 instance PrettyE VictoryPoint where
-    pe = PrettyDoc . Seq.singleton . PVictory
+    pe = PVictory
 instance PrettyE PlayerCount where
-    pe = PrettyDoc . Seq.singleton . PPlayerCount
+    pe = PPlayerCount
 instance PrettyE Turn where
-    pe = PrettyDoc . Seq.singleton . PTurn
+    pe = PTurn
 instance PrettyE Resource where
-    pe = PrettyDoc . Seq.singleton . PResource
+    pe = PResource
 instance PrettyE Age where
-    pe = PrettyDoc . Seq.singleton . PAge
+    pe = PAge
 instance PrettyE CompanyStage where
-    pe = PrettyDoc . Seq.singleton . PCompanyStage
+    pe = PCompanyStage
 instance PrettyE PoachingOutcome where
-    pe = PrettyDoc . Seq.singleton . PConflict
+    pe = PConflict
 instance PrettyE CompanyProfile where
-    pe = PrettyDoc . Seq.singleton . PCompany
+    pe = PCompany
 instance PrettyE ResearchType where
-    pe = PrettyDoc . Seq.singleton . PResearch
+    pe = PResearch
 instance PrettyE CardType where
-    pe = PrettyDoc . Seq.singleton . PCardType
+    pe = PCardType
 
-instance (PrettyE a, F.Foldable f) => PrettyE (f a) where
-    pe l = brackets $ sepBy (pchar ',') (map pe (F.toList l))
+foldPretty :: (PrettyE a, F.Foldable f) => f a -> PrettyDoc
+foldPretty l = brackets $ sepBy (pchar ',') (map pe (F.toList l))
 
 victory :: VictoryPoint -> VictoryType -> PrettyDoc
 victory v vc = withVictoryColor vc (pe v)
@@ -101,7 +100,7 @@ brackets :: PrettyDoc -> PrettyDoc
 brackets e = pchar '[' <> e <> pchar ']'
 
 space :: PrettyDoc
-space = PrettyDoc (Seq.singleton Space)
+space = Space
 
 sepBy :: F.Foldable f => PrettyDoc -> f PrettyDoc -> PrettyDoc
 sepBy sep = mconcat . intersperse sep . F.toList
@@ -110,31 +109,31 @@ pchar :: Char -> PrettyDoc
 pchar = pe . T.singleton
 
 withCardColor :: CardType -> PrettyDoc -> PrettyDoc
-withCardColor c = PrettyDoc . Seq.singleton . Colorize (PColorCard c)
+withCardColor c = Colorize (PColorCard c)
 
 withVictoryColor :: VictoryType -> PrettyDoc -> PrettyDoc
-withVictoryColor v = PrettyDoc . Seq.singleton . Colorize (PColorVictory v)
+withVictoryColor v = Colorize (PColorVictory v)
 
 numerical :: Integral n => n -> PrettyDoc
 numerical = fromString . (show :: Integer -> String) . fromIntegral
 
 emph :: PrettyDoc -> PrettyDoc
-emph = PrettyDoc . Seq.singleton . Emph
+emph = Emph
 
 pcost :: Cost -> PrettyDoc
 pcost (Cost r m) = F.foldMap pe r <> pe m
 
 indent :: Int -> PrettyDoc -> PrettyDoc
-indent d = PrettyDoc . Seq.singleton . Indent d
+indent = Indent
 
 (<+>) :: PrettyDoc -> PrettyDoc -> PrettyDoc
-a <+> b = a <> PrettyDoc (Seq.singleton Space) <> b
+a <+> b = a <> space <> b
 
 (</>) :: PrettyDoc -> PrettyDoc -> PrettyDoc
 a </> b = a <> newline <> b
 
 newline :: PrettyDoc
-newline = PrettyDoc (Seq.singleton NewLine)
+newline = NewLine
 
 vcat :: [PrettyDoc] -> PrettyDoc
 vcat = mconcat . intersperse newline
@@ -167,19 +166,16 @@ cardName card = case card of
     CompanyCard c s _ _  -> pe c <+> pe s
 
 shortCard :: Card -> PrettyDoc
-shortCard card = cardName card <+> pcost (card ^. cCost) <+> pe (map cardEffectShort (card ^. cEffect))
+shortCard card = cardName card <+> pcost (card ^. cCost) <+> foldPretty (map cardEffectShort (card ^. cEffect))
 
 longCard :: Card -> PrettyDoc
 longCard c = shortCard c <> page
                          <> if null grt
                                  then mempty
-                                 else mempty <+> "- Free:" <+> pe grt
+                                 else mempty <+> "- Free:" <+> foldPretty grt
     where
         grt = c ^.. cFree . traverse . to pe
         page = fromMaybe mempty (c ^? cAge . to pe . to brackets)
-
-instance PP.Pretty PrettyDoc where
-    pretty = F.foldMap PP.pretty . getDoc
 
 prettyColor :: PColor -> PP.Doc -> PP.Doc
 prettyColor (PColorCard c) = case c of
@@ -199,8 +195,10 @@ prettyColor (PColorVictory v) = case v of
     CommercialVictory     -> PP.dullred
     CommunityVictory      -> PP.magenta
 
-instance PP.Pretty PrettyElement where
+instance PP.Pretty PrettyDoc where
     pretty e = case e of
+        PEmpty                     -> PP.empty
+        PCat a b                   -> PP.pretty a <> PP.pretty b
         RawText t                  -> PP.string (T.unpack t)
         NewLine                    -> PP.linebreak
         Space                      -> PP.space
