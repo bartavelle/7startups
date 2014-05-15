@@ -20,6 +20,7 @@ import qualified Data.Map.Strict as M
 import Control.Monad.Operational
 import Control.Monad.State.Strict
 import Control.Monad.Error
+import Data.List.NonEmpty
 import Control.Applicative
 import System.Random
 
@@ -64,16 +65,8 @@ data PlayerAction = PlayerAction ActionType Card
 data ActionType = Play | Drop | BuildCompany
                 deriving Eq
 
--- | Some types for non empty lists
-data NonEmpty a = NonEmpty a [a]
-
 _NonEmpty :: Prism' [a] (NonEmpty a)
-_NonEmpty = prism fromNonEmpty toNonEmpty
-    where
-        fromNonEmpty (NonEmpty x xs) = x : xs
-        toNonEmpty l = case l of
-                           [] -> Left l
-                           (x:xs) -> Right (NonEmpty x xs)
+_NonEmpty = prism' toList nonEmpty
 
 -- | This describe the capabilities needed to write the rules, when no
 -- interaction with the player is required.

@@ -8,6 +8,7 @@ import Startups.GameTypes
 import qualified Data.Map.Strict as M
 import Control.Monad.Operational
 import Control.Monad.State.Strict
+import Data.List.NonEmpty
 
 data OperationDict m = OperationDict { _doPlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameState -> m (PlayerAction, Exchange)
                                      , _doAskCard        :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
