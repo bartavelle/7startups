@@ -46,9 +46,9 @@ consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
                     print (PP.pretty (cardChoiceDialog pid pm cards))
                     n <- readNumber
                     if n >= 0 && n < length cards
-                        then return (cards !! n)
+                        then return (return (cards !! n))
                         else ac turn pid necards stt m
-                _ -> (cards !!) <$> randomRIO (0, length cards - 1)
+                _ -> (return . (cards !!)) <$> randomRIO (0, length cards - 1)
         msg gs (PlayerCom "you" m) = com gs m
         msg gs (BroadcastCom m)    = com gs m
         msg _ _ = return ()

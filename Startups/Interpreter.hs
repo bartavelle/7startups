@@ -11,7 +11,7 @@ import Control.Monad.State.Strict
 import Data.List.NonEmpty
 
 data Strategy p m = Strategy { _doPlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameState -> m (p (PlayerAction, Exchange))
-                             , _doAskCard        :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m Card
+                             , _doAskCard        :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m (p Card)
                              }
 
 data OperationDict p m = OperationDict { _strat            :: Strategy p m

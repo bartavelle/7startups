@@ -81,7 +81,7 @@ data Communication = RawMessage PrettyDoc
 
 data GameInstr p a where
     PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange))
-    AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr p Card
+    AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr p (p Card)
     GetPromise     :: p a -> GameInstr p a
     Message        :: CommunicationType -> GameInstr p ()
     ThrowError     :: Message -> GameInstr p a -- ^ Used for the error instance
@@ -119,7 +119,7 @@ instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where
 -- player doesn't introduce a new card in the game.
 askCardSafe :: Age -> PlayerId -> NonEmpty Card -> Message -> GameMonad p Card
 askCardSafe a p cl m = do
-    card <- singleton (AskCard a p cl m)
+    card <- singleton (AskCard a p cl m) >>= getPromise
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
 

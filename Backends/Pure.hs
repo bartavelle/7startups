@@ -27,7 +27,7 @@ pureDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
             return (return (pe, e))
         ac _ _ necards _ _ =
             let lcards = _NonEmpty # necards
-            in  fmap (lcards !!) (roll (length lcards))
+            in  fmap (return . (lcards !!)) (roll (length lcards))
         msg _ _ = return ()
 
 runPure :: StdGen -> GameState -> GameMonad Identity a -> (GameState, Either Message a)
