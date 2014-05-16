@@ -195,7 +195,7 @@ resolvePoaching age = do
 --
 -- Not that all cards effects are revealed simultaneously, and all cards
 -- that let player gain money must be played after all cards are played.
-playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad (M.Map PlayerId [Card])
+playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
 playTurn age turn rawcardmap = do
     stt <- use id
     -- compute the list of players that are playing this turn. Only players
@@ -206,8 +206,10 @@ playTurn age turn rawcardmap = do
         convertCards crds = case crds ^? _NonEmpty of
             Just n -> return n
             Nothing -> throwError "We managed to get an empty hand to play, this should never happen"
-    -- first gather all decisions
-    decisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
+    -- first gather all decisions promises
+    pdecisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
+    -- then await on all promised
+    decisions <- traverse (\(crds,p) -> (,) <$> pure crds <*> getPromise p) pdecisions
     actionRecap (fmap snd decisions)
     results <- itraverse (resolveAction age) decisions
     -- first add the money gained from exchanges
@@ -221,7 +223,7 @@ playTurn age turn rawcardmap = do
         return hand
 
 -- | Rotates the player hands, at the end of each turn.
-rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad (M.Map PlayerId [Card])
+rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
 rotateHands age cardmap = itraverse rotatePlayer cardmap
     where
         rotatePlayer pid _ = do
@@ -234,7 +236,7 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
                         else NRight
 
 -- | Play a whole age
-playAge :: Age -> GameMonad ()
+playAge :: Age -> GameMonad p ()
 playAge age = do
     cards <- dealCards age
     let turnPlay crds turn = do
@@ -265,7 +267,7 @@ playAge age = do
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.
-checkCopyCommunity :: GameMonad ()
+checkCopyCommunity :: GameMonad p ()
 checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
     where
         checkPlayer pid stt = when (has (cardEffects . _CopyCommunity) stt) $ do
@@ -300,7 +302,7 @@ victoryPoints = use playermap >>= itraverse computeScore
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.
-playGame :: GameMonad (M.Map PlayerId (M.Map VictoryType VictoryPoint))
+playGame :: GameMonad p (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 playGame = do
     initGame
     mapM_ playAge [Age1 .. Age3]

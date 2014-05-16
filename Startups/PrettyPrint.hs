@@ -6,21 +6,18 @@ import Startups.Base
 import Startups.Cards
 
 import Data.Monoid
-import Data.Maybe (fromMaybe)
 import Data.String
 import Control.Monad.Error
 import qualified Data.Text as T
 import qualified Data.Foldable as F
-import Data.List (intersperse)
+import Data.List (intersperse,foldl')
+import Data.List.Split (linesBy)
 import Control.Lens
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 data PrettyDoc = RawText T.Text
                | NewLine
                | Space
-               | Emph PrettyDoc
-               | Colorize PColor PrettyDoc
-               | Indent Int PrettyDoc
                | PDirection EffectDirection
                | PNeighbor Neighbor
                | PFund Funding
@@ -36,8 +33,22 @@ data PrettyDoc = RawText T.Text
                | PResearch ResearchType
                | PCardType CardType
                | PEmpty
+               | Emph PrettyDoc
+               | Colorize PColor PrettyDoc
+               | Indent Int PrettyDoc
                | PCat PrettyDoc PrettyDoc
                deriving Eq
+
+-- | This little helper dropw the newline keyword for backends that don't
+-- support multiline docs.
+splitLines :: PrettyDoc -> [PrettyDoc]
+splitLines = map (foldl' PCat PEmpty) . linesBy (== NewLine) . linearize
+    where
+        linearize (PCat a b) = splitLines a ++ splitLines b
+        linearize (Indent n d) = map (Indent n) (splitLines d)
+        linearize (Colorize c d) = map (Colorize c) (splitLines d)
+        linearize (Emph d) = map Emph (splitLines d)
+        linearize x = [x]
 
 instance Monoid PrettyDoc where
     mappend = PCat
@@ -169,13 +180,11 @@ shortCard :: Card -> PrettyDoc
 shortCard card = cardName card <+> pcost (card ^. cCost) <+> foldPretty (map cardEffectShort (card ^. cEffect))
 
 longCard :: Card -> PrettyDoc
-longCard c = shortCard c <> page
-                         <> if null grt
+longCard c = shortCard c <> if null grt
                                  then mempty
                                  else mempty <+> "- Free:" <+> foldPretty grt
     where
         grt = c ^.. cFree . traverse . to pe
-        page = fromMaybe mempty (c ^? cAge . to pe . to brackets)
 
 prettyColor :: PColor -> PP.Doc -> PP.Doc
 prettyColor (PColorCard c) = case c of
@@ -207,8 +216,8 @@ instance PP.Pretty PrettyDoc where
         Indent n d                 -> PP.indent n (PP.pretty d)
         PDirection Own             -> "⇓"
         PDirection (Neighboring n) -> PP.pretty (PNeighbor n)
-        PNeighbor NLeft            -> "◀"
-        PNeighbor NRight           -> "▶"
+        PNeighbor NLeft            -> "◀ "
+        PNeighbor NRight           -> "▶ "
         PFund (Funding 0)          -> mempty
         PFund (Funding n)          -> PP.yellow (PP.pretty (numerical n) <> "$")
         PPoach (Poacher 0)         -> mempty
@@ -218,7 +227,7 @@ instance PP.Pretty PrettyDoc where
         PVictory vp                -> PP.pretty $ numerical vp
         PPlayerCount pc            -> PP.pretty $ numerical pc
         PTurn t                    -> PP.pretty $ numerical t
-        PResource Youthfulness     -> PP.cyan "Y"
+        PResource Youthfulness     -> PP.cyan       "Y"
         PResource Adoption         -> PP.dullwhite  "A"
         PResource Vision           -> PP.magenta    "V"
         PResource Development      -> PP.dullyellow "D"
@@ -237,6 +246,8 @@ instance PP.Pretty PrettyDoc where
         PConflict (Victory Age1)   -> PP.red "+1"
         PConflict (Victory Age2)   -> PP.red "+3"
         PConflict (Victory Age3)   -> PP.red "+5"
-        PCardType t                -> prettyColor (PColorCard t) (fromString (show t))
-        PResearch r                -> PP.dullgreen $ PP.char (head (show r))
+        PCardType t                -> prettyColor (PColorCard t) "🃏 "
+        PResearch CustomSolution   -> PP.dullgreen "⚡ "
+        PResearch Programming      -> PP.dullgreen "λ "
+        PResearch Scaling          -> PP.dullgreen "⚖ "
         PCompany (CompanyProfile c s) -> PP.string (show c) <> PP.string (show s)

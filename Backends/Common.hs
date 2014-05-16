@@ -16,6 +16,7 @@ import Data.Monoid
 import qualified Data.Foldable as F
 import System.Random (mkStdGen)
 import Data.List (sort)
+import Data.Tuple (swap)
 
 cardpreview :: PlayerId -> M.Map PlayerId PlayerState -> Card -> PrettyDoc
 cardpreview pid pmap card =
@@ -56,14 +57,14 @@ playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc 
 playerActionsDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> [(PlayerAction, Exchange, Maybe SpecialInformation)] -> PrettyDoc
 playerActionsDialog pid pmap clist actions =
         "Your hand:"
-        </> vcat [ shortCard card <+> cardpreview pid pmap card | card <- clist ]
+        </> vcat [ longCard card <+> cardpreview pid pmap card | card <- clist ]
         </> "What are you going to play ?"
         </> vcat [ numerical (n :: Int) <> ") " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] actions ]
 
 cardChoiceDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> PrettyDoc
 cardChoiceDialog pid pmap cards = vcat [ numerical (n :: Int) <> ") " <> desc c | (n,c) <- zip [0..] cards ]
     where
-        desc c = shortCard c <+> cardpreview pid pmap c
+        desc c = longCard c <+> cardpreview pid pmap c
 
 playerDescShort :: PlayerState -> PrettyDoc
 playerDescShort p@(PlayerState c cs _ f _ _) = brackets (pe c <> "-" <> pe cs)
@@ -90,3 +91,9 @@ quicksituation age turn stt = vcat $ hdr : map (\(n,ps) -> showPlayerId n <+> br
 
 displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange) -> PrettyDoc
 displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Private pid pmap (pa, exch, Nothing) | (pid, (pa, exch)) <- M.toList actionmap ]
+
+displayVictory :: M.Map PlayerId (M.Map VictoryType VictoryPoint) -> PrettyDoc
+displayVictory = vcat . map displayLine . itoList
+    where
+        displayLine (pid, vmap) = showPlayerId pid <+> victory (vmap ^. traverse) CompanyVictory
+                                                   <+> foldPretty (map (uncurry victory . swap) (itoList vmap))

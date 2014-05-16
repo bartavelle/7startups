@@ -10,8 +10,8 @@ import System.Random
 import Control.Lens
 import qualified Data.Map.Strict as M
 
-pureDict :: OperationDict (State StdGen)
-pureDict = OperationDict pd ac ar tp gm
+pureDict :: OperationDict Identity (State StdGen)
+pureDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
     where
         roll :: Int -> State StdGen Int
         roll x = do
@@ -24,15 +24,13 @@ pureDict = OperationDict pd ac ar tp gm
                 x = allowableActions age pid cards (stt ^. playermap)
             n <- roll (length x)
             let (pe,e,_) = x !! n
-            return (pe, e)
-        ar _ _ = return ()
+            return (return (pe, e))
         ac _ _ necards _ _ =
             let lcards = _NonEmpty # necards
             in  fmap (lcards !!) (roll (length lcards))
-        tp _ _ = return ()
-        gm _ = return ()
+        msg _ _ = return ()
 
-runPure :: StdGen -> GameState -> GameMonad a -> (GameState, Either Message a)
+runPure :: StdGen -> GameState -> GameMonad Identity a -> (GameState, Either Message a)
 runPure g gs o = evalState (runInterpreter pureDict gs o) g
 
 pureGame :: StdGen -> [PlayerId] -> (GameState, Either Message (M.Map PlayerId (M.Map VictoryType VictoryPoint)))
