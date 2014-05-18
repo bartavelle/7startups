@@ -17,6 +17,7 @@ import qualified Data.Foldable as F
 import System.Random (mkStdGen)
 import Data.List (sort)
 import Data.Tuple (swap)
+import Data.List.NonEmpty (NonEmpty)
 
 cardpreview :: PlayerId -> M.Map PlayerId PlayerState -> Card -> PrettyDoc
 cardpreview pid pmap card =
@@ -54,12 +55,12 @@ playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc 
         sidesc Nothing = mempty
 
 
-playerActionsDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> [(PlayerAction, Exchange, Maybe SpecialInformation)] -> PrettyDoc
+playerActionsDialog :: PlayerId -> M.Map PlayerId PlayerState -> NonEmpty Card -> NonEmpty (PlayerAction, Exchange, Maybe SpecialInformation) -> PrettyDoc
 playerActionsDialog pid pmap clist actions =
         "Your hand:"
-        </> vcat [ longCard card <+> cardpreview pid pmap card | card <- clist ]
+        </> vcat [ longCard card <+> cardpreview pid pmap card | card <- F.toList clist ]
         </> "What are you going to play ?"
-        </> vcat [ numerical (n :: Int) <> ") " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] actions ]
+        </> vcat [ numerical (n :: Int) <> ") " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] (F.toList actions) ]
 
 cardChoiceDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> PrettyDoc
 cardChoiceDialog pid pmap cards = vcat [ numerical (n :: Int) <> ") " <> desc c | (n,c) <- zip [0..] cards ]
@@ -97,3 +98,7 @@ displayVictory = vcat . map displayLine . itoList
     where
         displayLine (pid, vmap) = showPlayerId pid <+> victory (vmap ^. traverse) CompanyVictory
                                                    <+> foldPretty (map (uncurry victory . swap) (itoList vmap))
+
+displayCommunication :: Communication -> PrettyDoc
+displayCommunication (RawMessage d) = d
+displayCommunication (ActionRecapMsg gs mp) = displayActions (gs ^. playermap) mp

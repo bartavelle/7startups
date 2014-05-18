@@ -77,7 +77,7 @@ data CommunicationType = PlayerCom PlayerId Communication
                        | BroadcastCom Communication
 
 data Communication = RawMessage PrettyDoc
-                   | ActionRecapMsg (M.Map PlayerId (PlayerAction, Exchange))
+                   | ActionRecapMsg GameState (M.Map PlayerId (PlayerAction, Exchange))
 
 data GameInstr p a where
     PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange))
@@ -107,7 +107,7 @@ getPromise = singleton . GetPromise
 
 -- | Gives a quick rundown of all actions
 actionRecap :: M.Map PlayerId (PlayerAction, Exchange) -> GameMonad p ()
-actionRecap = singleton . Message . BroadcastCom . ActionRecapMsg
+actionRecap mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg s mm
 
 instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where
     throwError = singleton . ThrowError

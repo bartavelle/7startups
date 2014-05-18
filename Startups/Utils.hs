@@ -23,7 +23,9 @@ import Data.Set.Lens
 import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
 import System.Random (StdGen)
-import Data.List (nub)
+import Data.List.NonEmpty (NonEmpty)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Semigroup as SG
 
 -- | We will use this type to define a custom monoid instance for Map k n,
 -- when n is numerical. This will be used to simplify some expressions. It
@@ -233,32 +235,32 @@ getCardActions age playerstate lplayer rplayer card
             guard (ecost + neededfunding <= myfunding)
             return (exchange, ecost)
 
--- | List all possible actions a player can take, given a list of cards
-allowableActions :: Age -> PlayerId -> [Card] -> M.Map PlayerId PlayerState -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
-allowableActions age pid cards players =
+-- | List all possible actions a player can take, given a list of cards.
+allowableActions :: Age -> PlayerId -> NonEmpty Card -> M.Map PlayerId PlayerState -> NonEmpty (PlayerAction, Exchange, Maybe SpecialInformation)
+allowableActions age pid necards players =
     let playerNeighborInformation = do
             mpstate <- players ^. at pid
             lpstate <- players ^. at (mpstate ^. neighbor NLeft)
             rpstate <- players ^. at (mpstate ^. neighbor NRight)
             return (mpstate, availableResources Exchange lpstate, availableResources Exchange rpstate)
         -- all cards can always be dropped
-        dropped = map ( (,mempty,Nothing) . PlayerAction Drop ) cards
-    in  nub $ (++ dropped) $ case playerNeighborInformation of
+        dropped = NE.map ( (,mempty,Nothing) . PlayerAction Drop ) necards
+    in  (SG.<> dropped) $ NE.nub $ NE.fromList $ case playerNeighborInformation of
             Just (playerstate, lplayer, rplayer) ->
                 -- the company stuff, checks if we can build it
                 let cstage     = playerstate ^. pCompanyStage
                     comp       = playerstate ^. pCompany
                     nstagecard = getResourceCard comp (succ cstage)
                     maxstage   = getMaxStage comp
-                    compaction | cstage == maxstage = []
+                    compaction | cstage == maxstage = mempty
                                | otherwise = do
                                    (_, exch, si) <- getCardActions age playerstate lplayer rplayer nstagecard
                                    -- you can't build your company using a special ability. This is artificial,
                                    -- this check should be done at the "getCardActions" part.
                                    guard (has _Nothing si)
-                                   cardToDrop <- cards
+                                   cardToDrop <- _NonEmpty # necards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
-                in concatMap (getCardActions age playerstate lplayer rplayer) cards ++ compaction
+                in concatMap (getCardActions age playerstate lplayer rplayer) (_NonEmpty # necards) ++ compaction
             _ -> []
 
 -- | Creates an initial gamestate.

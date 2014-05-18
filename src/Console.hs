@@ -12,6 +12,7 @@ import Control.Applicative
 import System.Random
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Data.Char (isDigit)
+import qualified Data.List.NonEmpty as NE
 
 readNumber :: IO Int
 readNumber = do
@@ -24,17 +25,16 @@ consoleDict :: OperationDict Identity IO
 consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
     where
         pd age turn pid necards stt = do
-            let cards = _NonEmpty # necards
-                pm = stt ^. playermap
-                x = allowableActions age pid cards pm
+            let pm = stt ^. playermap
+                x = allowableActions age pid necards pm
             r <- case pid of
                     "you" -> do
                         print (PP.pretty (quicksituation age turn pm))
-                        print (PP.pretty (playerActionsDialog pid pm cards x))
+                        print (PP.pretty (playerActionsDialog pid pm necards x))
                         readNumber
-                    _ -> randomRIO (0, length x - 1)
-            if r >= 0 && r < length x
-                then let (pa,e,_) = x !! r
+                    _ -> randomRIO (0, NE.length x - 1)
+            if r >= 0 && r < NE.length x
+                then let (pa,e,_) = x NE.!! r
                      in  return (return (pa, e))
                 else pd age turn pid necards stt
         ac turn pid necards stt m = do
@@ -53,7 +53,7 @@ consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
         msg gs (BroadcastCom m)    = com gs m
         msg _ _ = return ()
         com _ (RawMessage m) = print (PP.pretty m)
-        com stt (ActionRecapMsg actions) = print (PP.pretty (displayActions (stt ^. playermap) actions))
+        com stt (ActionRecapMsg _ actions) = print (PP.pretty (displayActions (stt ^. playermap) actions))
 
 main :: IO ()
 main = do

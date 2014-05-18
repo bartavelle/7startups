@@ -9,6 +9,7 @@ import Control.Monad.State.Strict
 import System.Random
 import Control.Lens
 import qualified Data.Map.Strict as M
+import qualified Data.List.NonEmpty as NE
 
 pureDict :: OperationDict Identity (State StdGen)
 pureDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
@@ -20,10 +21,9 @@ pureDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
             put g'
             return o
         pd age _ pid necards stt = do
-            let cards = _NonEmpty # necards
-                x = allowableActions age pid cards (stt ^. playermap)
-            n <- roll (length x)
-            let (pe,e,_) = x !! n
+            let x = allowableActions age pid necards (stt ^. playermap)
+            n <- roll (NE.length x)
+            let (pe,e,_) = x NE.!! n
             return (return (pe, e))
         ac _ _ necards _ _ =
             let lcards = _NonEmpty # necards
