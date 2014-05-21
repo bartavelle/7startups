@@ -31,7 +31,7 @@ instance Monoid (SubFP e a) where
 
 instance Monoid (PubFP e a) where
     mempty = PubFP (const (return ()))
-    PubFP a `mappend` PubFP b = PubFP (a >> b)
+    PubFP a `mappend` PubFP b = PubFP (\e -> a e >> b e)
 
 fulfillPub :: PubFP e a -> a -> STM ()
 fulfillPub (PubFP o) a = o (Right a)
