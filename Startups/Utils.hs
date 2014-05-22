@@ -24,8 +24,8 @@ import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
 import System.Random (StdGen)
 import Data.List.NonEmpty (NonEmpty)
+import Data.List (nub)
 import qualified Data.List.NonEmpty as NE
-import qualified Data.Semigroup as SG
 
 -- | We will use this type to define a custom monoid instance for Map k n,
 -- when n is numerical. This will be used to simplify some expressions. It
@@ -245,7 +245,7 @@ allowableActions age pid necards players =
             return (mpstate, availableResources Exchange lpstate, availableResources Exchange rpstate)
         -- all cards can always be dropped
         dropped = NE.map ( (,mempty,Nothing) . PlayerAction Drop ) necards
-    in  (SG.<> dropped) $ NE.nub $ NE.fromList $ case playerNeighborInformation of
+    in  foldr NE.cons dropped $ nub $ case playerNeighborInformation of
             Just (playerstate, lplayer, rplayer) ->
                 -- the company stuff, checks if we can build it
                 let cstage     = playerstate ^. pCompanyStage
