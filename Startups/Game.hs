@@ -176,18 +176,20 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
             return (Just ccard, 0)
     return (newhand, payout <> AddMap (M.singleton pid extrapay), cardp)
 
--- | Play the end of age poaching.
-resolvePoaching :: GameStateOnly m => Age -> m ()
-resolvePoaching age = do
-    plyrs <- use playermap
+-- | Play the end of age poaching, and returns the tokens that must be
+-- distributed.
+resolvePoaching :: Age -> M.Map PlayerId PlayerState -> M.Map PlayerId [PoachingOutcome]
+resolvePoaching age plyrs =
     let poachingScores = fmap (view (cardEffects . _Poaching)) plyrs
-    ifor_ plyrs $ \pid pstt -> do
-        let scores = pstt ^.. pNeighborhood . traverse . to (\p -> cmpScore $ view (ix p) poachingScores) . traverse
-            curScore = poachingScores ^. ix pid
-            cmpScore s | s > curScore = Just Defeat
-                       | s < curScore = Just $ Victory age
-                       | otherwise = Nothing
-        playermap . ix pid . pPoachingResults <>= scores
+        getScores pid ps =
+            let nscores = ps ^.. pNeighborhood . both . to (cmpScore . getnscore) . folded
+                curScore = poachingScores ^. ix pid
+                cmpScore s | s > curScore = Just Defeat
+                           | s < curScore = Just (Victory age)
+                           | otherwise = Nothing
+                getnscore x = poachingScores ^. ix x
+            in  nscores
+    in  M.mapWithKey getScores plyrs
 
 -- | Play a turn :
 -- * Ask the player what he'd like to do with the proposed hand.
@@ -210,17 +212,33 @@ playTurn age turn rawcardmap = do
     pdecisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
     -- then await on all promised
     decisions <- traverse (\(crds,p) -> (,) <$> pure crds <*> getPromise p) pdecisions
-    actionRecap (fmap snd decisions)
     results <- itraverse (resolveAction age) decisions
     -- first add the money gained from exchanges
     ifor_ (results ^. traverse . _2) $ \pid payout ->
         playermap . ix pid . pFunds += payout
     -- then add the money gained from cards
-    ifor results $ \pid (hand, _, card) -> do
+    o <- ifor results $ \pid (hand, _, card) -> do
         void $ for card $ \c -> do
             f <- getCardFunding pid c <$> use playermap
             playermap . ix pid . pFunds += f
         return hand
+    actionRecap age turn (fmap snd decisions)
+    -- check for recycling
+    -- Note that it is buggy : when played at the end of an age, it should
+    -- give access to all the discarded cards. Now that it's resolved here,
+    -- it can't.
+    let recyclers = M.keys $ M.filter (has (_3 . _Just . cEffect . traverse . _Recycling)) results
+    forM_ recyclers $ \recycler -> do
+        curstate <- use id
+        case curstate ^? discardpile . _NonEmpty of
+            Just nedp -> do
+                generalMessage (showPlayerId recycler <+> "is going to use his recycle ability.")
+                card <- askCardSafe age recycler nedp "Choose a card to recycle (play for free)"
+                generalMessage (showPlayerId recycler <+> "recycled" <+> shortCard card)
+                playermap . ix recycler . pCards %= (card :)
+                discardpile %= filter (/= card)
+            Nothing -> tellPlayer recycler (emph "The discard pile was empty, you can't recycle.")
+    return o
 
 -- | Rotates the player hands, at the end of each turn.
 rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
@@ -249,21 +267,11 @@ playAge age = do
                 else rotateHands age ncrds
     remaining <- foldM turnPlay cards [1 .. 7]
     discardpile <>= toListOf (traverse . traverse) remaining
-    -- now for recycling
-    pm <- itoList <$> use playermap
-    let recyclers = pm ^.. traverse . filtered (has (_2 . cardEffects . _Recycling)) . _1
-    forM_ recyclers $ \pid -> do
-        stt <- use id
-        case stt ^? discardpile . _NonEmpty of
-            Just nedp -> do
-                generalMessage (showPlayerId pid <+> "is going to use his recycle ability.")
-                card <- askCardSafe age pid nedp "Choose a card to recycle (play for free)"
-                generalMessage (showPlayerId pid <+> "recycled" <+> shortCard card)
-                playermap . ix pid . pCards %= (card :)
-                discardpile %= filter (/= card)
-            Nothing -> tellPlayer pid (emph "The discard pile was empty, you can't recycle.")
     -- resolve the "military" part
-    resolvePoaching age
+    let displayPoaching (pid, tokens) = showPlayerId pid <+> "received the following poaching tokens" <+> foldPretty tokens
+    poachingTokens <- resolvePoaching age <$> use playermap
+    ifor_ poachingTokens $ \pid toks -> playermap . ix pid . pPoachingResults <>= toks
+    generalMessage $ vcat $ map displayPoaching $ filter (not . null . snd) $ itoList poachingTokens
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.

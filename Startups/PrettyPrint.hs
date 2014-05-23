@@ -10,8 +10,7 @@ import Data.String
 import Control.Monad.Error
 import qualified Data.Text as T
 import qualified Data.Foldable as F
-import Data.List (intersperse,foldl')
-import Data.List.Split (linesBy)
+import Data.List (intersperse)
 import Control.Lens
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
@@ -37,18 +36,35 @@ data PrettyDoc = RawText T.Text
                | Colorize PColor PrettyDoc
                | Indent Int PrettyDoc
                | PCat PrettyDoc PrettyDoc
-               deriving Eq
+               deriving (Eq, Show)
 
 -- | This little helper dropw the newline keyword for backends that don't
 -- support multiline docs.
 splitLines :: PrettyDoc -> [PrettyDoc]
-splitLines = map (foldl' PCat PEmpty) . linesBy (== NewLine) . linearize
+splitLines = map simplify . splitLines' mempty
     where
-        linearize (PCat a b) = splitLines a ++ splitLines b
-        linearize (Indent n d) = map (Indent n) (splitLines d)
-        linearize (Colorize c d) = map (Colorize c) (splitLines d)
-        linearize (Emph d) = map Emph (splitLines d)
-        linearize x = [x]
+        -- these rules should be enough
+        simplify (PCat PEmpty PEmpty) = PEmpty
+        simplify (PCat a PEmpty) = simplify a
+        simplify (PCat PEmpty b) = simplify b
+        simplify (PCat a b) = PCat (simplify a) (simplify b)
+        simplify x = x
+        splitLines' :: PrettyDoc -> PrettyDoc -> [PrettyDoc]
+        splitLines' acc (PCat NewLine b) = acc : splitLines b
+        splitLines' acc (PCat a NewLine) = map (PCat acc) (splitLines a)
+        splitLines' acc (PCat dx dy) =
+            case (splitLines dx, splitLines dy) of
+                ([], [])     -> [acc]
+                ([], y:ys)   -> PCat acc y : ys
+                (x:xs, [])   -> PCat acc x : xs
+                (x:xs, y:ys) -> if null xs
+                                    then PCat acc (PCat x y) : ys
+                                    else PCat acc x : init xs ++ [PCat (last xs) y] ++ ys
+        splitLines' acc (Emph d) = map (PCat acc . Emph) (splitLines d)
+        splitLines' acc (Colorize c d) = map (PCat acc . Colorize c) (splitLines d)
+        splitLines' acc (Indent n d) = map (PCat acc . Indent n) (splitLines d)
+        splitLines' acc NewLine = [acc]
+        splitLines' acc x = [PCat acc x]
 
 instance Monoid PrettyDoc where
     mappend = PCat
@@ -56,7 +72,7 @@ instance Monoid PrettyDoc where
 
 data PColor = PColorCard CardType
             | PColorVictory VictoryType
-            deriving Eq
+            deriving (Eq, Show)
 
 instance IsString PrettyDoc where
     fromString = RawText . T.pack

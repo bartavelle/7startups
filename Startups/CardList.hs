@@ -19,7 +19,7 @@ getResourceCard p@(CompanyProfile c _) Project = CompanyCard p Project "" [Provi
                   Twitter   -> Youthfulness
                   Apple     -> Vision
                   Google    -> Development
-                  Instagram -> Marketing
+                  Yahoo     -> Marketing
                   Amazon    -> Adoption
                   Microsoft -> Operations
 getResourceCard p@(CompanyProfile c A) Stage1 = CompanyCard p Stage1 cost [AddVictory CompanyVictory 3 HappensOnce]
@@ -29,7 +29,7 @@ getResourceCard p@(CompanyProfile c A) Stage1 = CompanyCard p Stage1 cost [AddVi
                   Twitter   -> "OO"
                   Apple     -> "OO"
                   Google    -> "DD"
-                  Instagram -> "MM"
+                  Yahoo     -> "MM"
                   Amazon    -> "DD"
                   Microsoft -> "OO"
 getResourceCard p@(CompanyProfile c A) Stage2 = CompanyCard p Stage2 cost eff
@@ -39,7 +39,7 @@ getResourceCard p@(CompanyProfile c A) Stage2 = CompanyCard p Stage2 cost eff
                           Twitter   -> ("FF"  , [ResourceChoice baseResources Kept])
                           Apple     -> ("MM"  , [GainFunding 9 HappensOnce])
                           Google    -> ("MMM" , [ScientificBreakthrough])
-                          Instagram -> ("OO"  , [Opportunity (S.fromList [Age1 .. Age3])])
+                          Yahoo     -> ("OO"  , [Opportunity (S.fromList [Age1 .. Age3])])
                           Amazon    -> ("FFF" , [Recycling])
                           Microsoft -> ("MMM" , [AddVictory CompanyVictory 5 HappensOnce])
 getResourceCard p@(CompanyProfile c A) Stage3 = CompanyCard p Stage3 cost [AddVictory CompanyVictory 7 HappensOnce]
@@ -49,7 +49,7 @@ getResourceCard p@(CompanyProfile c A) Stage3 = CompanyCard p Stage3 cost [AddVi
                   Twitter   -> "YY"
                   Apple     -> "VV"
                   Google    -> "DDDD"
-                  Instagram -> "FF"
+                  Yahoo     -> "FF"
                   Amazon    -> "AA"
                   Microsoft -> "OOOO"
 getResourceCard c@(CompanyProfile Facebook  B) s@Stage1 = CompanyCard c s "OOO"  [Poaching 1, AddVictory CompanyVictory 3 HappensOnce, GainFunding 3 HappensOnce]
@@ -63,9 +63,9 @@ getResourceCard c@(CompanyProfile Apple     B) s@Stage3 = CompanyCard c s "YVA" 
 getResourceCard c@(CompanyProfile Google    B) s@Stage1 = CompanyCard c s "DA"   [AddVictory CompanyVictory 3 HappensOnce]
 getResourceCard c@(CompanyProfile Google    B) s@Stage2 = CompanyCard c s "MMY"  [Efficiency]
 getResourceCard c@(CompanyProfile Google    B) s@Stage3 = CompanyCard c s "DDDV" [ScientificBreakthrough]
-getResourceCard c@(CompanyProfile Instagram B) s@Stage1 = CompanyCard c s "MM"   [CheapExchange baseResources (S.fromList [NLeft, NRight])]
-getResourceCard c@(CompanyProfile Instagram B) s@Stage2 = CompanyCard c s "OO"   [AddVictory CompanyVictory 5 HappensOnce]
-getResourceCard c@(CompanyProfile Instagram B) s@Stage3 = CompanyCard c s "FFA"  [CopyCommunity]
+getResourceCard c@(CompanyProfile Yahoo     B) s@Stage1 = CompanyCard c s "MM"   [CheapExchange baseResources (S.fromList [NLeft, NRight])]
+getResourceCard c@(CompanyProfile Yahoo     B) s@Stage2 = CompanyCard c s "OO"   [AddVictory CompanyVictory 5 HappensOnce]
+getResourceCard c@(CompanyProfile Yahoo     B) s@Stage3 = CompanyCard c s "FFA"  [CopyCommunity]
 getResourceCard c@(CompanyProfile Amazon    B) s@Stage1 = CompanyCard c s "FF"   [AddVictory CompanyVictory 2 HappensOnce, Recycling]
 getResourceCard c@(CompanyProfile Amazon    B) s@Stage2 = CompanyCard c s "DDD"  [AddVictory CompanyVictory 1 HappensOnce, Recycling]
 getResourceCard c@(CompanyProfile Amazon    B) s@Stage3 = CompanyCard c s "YVA"  [Recycling]

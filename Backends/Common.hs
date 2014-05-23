@@ -8,6 +8,7 @@ import Startups.GameTypes
 import Startups.Game
 import Startups.PrettyPrint
 import Startups.Utils
+import Startups.CardList
 import Backends.Pure
 
 import qualified Data.Map.Strict as M
@@ -60,10 +61,10 @@ playerActionsDialog pid pmap clist actions =
         "Your hand:"
         </> vcat [ longCard card <+> cardpreview pid pmap card | card <- F.toList clist ]
         </> "What are you going to play ?"
-        </> vcat [ numerical (n :: Int) <> ") " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] (F.toList actions) ]
+        </> vcat [ numerical (n :: Int) <> " - " <> playerActionDesc Private pid pmap pa | (n,pa) <- zip [0..] (F.toList actions) ]
 
 cardChoiceDialog :: PlayerId -> M.Map PlayerId PlayerState -> [Card] -> PrettyDoc
-cardChoiceDialog pid pmap cards = vcat [ numerical (n :: Int) <> ") " <> desc c | (n,c) <- zip [0..] cards ]
+cardChoiceDialog pid pmap cards = vcat [ numerical (n :: Int) <> " - " <> desc c | (n,c) <- zip [0..] cards ]
     where
         desc c = longCard c <+> cardpreview pid pmap c
 
@@ -83,11 +84,8 @@ playerDescShort p@(PlayerState c cs _ f _ _) = brackets (pe c <> "-" <> pe cs)
         science = F.foldMap pe $ sort $ p ^.. cardEffects . _RnD
 
 quicksituation :: Age -> Turn -> M.Map PlayerId PlayerState -> PrettyDoc
-quicksituation age turn stt = vcat $ hdr : map (\(n,ps) -> showPlayerId n <+> brackets (victory (vicmap ^. ix n) CompanyVictory <> "♚") <+> playerDescShort ps) (M.toList stt)
+quicksituation age turn stt = hdr </> situationRecap stt
     where
-        victorydetails = runPure (mkStdGen 0) (GameState stt [] (mkStdGen 0)) victoryPoints ^. _2 . _Right
-        vicmap :: M.Map PlayerId VictoryPoint
-        vicmap = victorydetails & traverse %~ (mconcat . M.elems)
         hdr = "Age" <+> pe age <+> ", turn" <+> numerical turn
 
 displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange) -> PrettyDoc
@@ -101,4 +99,34 @@ displayVictory = vcat . map displayLine . itoList
 
 displayCommunication :: Communication -> PrettyDoc
 displayCommunication (RawMessage d) = d
-displayCommunication (ActionRecapMsg gs mp) = displayActions (gs ^. playermap) mp
+displayCommunication (ActionRecapMsg age turn gs mp) =   displayActions pmap mp
+                                                     </> quicksituation age turn pmap
+    where pmap = gs ^. playermap
+
+playerStartup :: CompanyProfile -> CompanyStage -> PrettyDoc
+playerStartup cp cs = vcat $ map genStage [Project .. getMaxStage cp]
+    where
+        genStage s = hdr s <+> pe s <+> shortCard (getResourceCard cp s)
+        hdr s = if s == cs
+                    then "*"
+                    else " "
+
+vicmap :: M.Map PlayerId PlayerState -> M.Map PlayerId VictoryPoint
+vicmap stt = victorydetails & traverse %~ (mconcat . M.elems)
+    where
+        victorydetails = runPure (mkStdGen 0) (GameState stt [] (mkStdGen 0)) victoryPoints ^. _2 . _Right
+
+-- | One line recap for a player
+playerRecap :: PlayerId -> PlayerState -> VictoryPoint -> PrettyDoc
+playerRecap n ps vp = showPlayerId n <+> brackets (victory vp CompanyVictory <> "♚") <+> playerDescShort ps
+
+situationRecap :: M.Map PlayerId PlayerState -> PrettyDoc
+situationRecap stt = vcat $ map (\(n,ps) -> playerRecap n ps (vm ^. ix n)) (M.toList stt)
+    where
+        vm = vicmap stt
+
+detailedSituationRecap :: M.Map PlayerId PlayerState -> PrettyDoc
+detailedSituationRecap stt = vcat $ M.elems $ M.mapWithKey precap stt
+    where
+        precap n ps = playerRecap n ps (vm ^. ix n) </> indent 4 (vcat (map shortCard (ps ^. pCards)))
+        vm = vicmap stt

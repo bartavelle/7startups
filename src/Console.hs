@@ -53,7 +53,7 @@ consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
         msg gs (BroadcastCom m)    = com gs m
         msg _ _ = return ()
         com _ (RawMessage m) = print (PP.pretty m)
-        com stt (ActionRecapMsg _ actions) = print (PP.pretty (displayActions (stt ^. playermap) actions))
+        com stt (ActionRecapMsg _ _ _ actions) = print (PP.pretty (displayActions (stt ^. playermap) actions))
 
 main :: IO ()
 main = do

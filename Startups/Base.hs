@@ -22,7 +22,7 @@ data Company = Facebook     -- ^ Rhodes
              | Twitter      -- ^ Alexandria
              | Apple        -- ^ Arthemis
              | Google       -- ^ Babylon
-             | Instagram    -- ^ Zeus statue
+             | Yahoo        -- ^ Zeus statue
              | Amazon       -- ^ Halicarnasse
              | Microsoft    -- ^ Gizeh
              deriving (Eq, Ord, Enum, Show)
