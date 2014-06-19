@@ -141,15 +141,15 @@ parseContent t = case parseOnly ((Left <$> cmdparser <|> Right <$> cntparser) <*
     help      = string "!help" *> pure Help
     cntparser :: Parser PlayerInput
     cntparser = start <|> stop <|> joing <|> go <|> notgo <|> leave <|> numchoice <|> mystart <|> details <|> detail
-    start     = Start <$> (lexer (string "!start") *> decimal)
-    stop      = Stop <$> (lexer (string "!stop") *> decimal)
-    joing     = Join <$> (lexer (string "!ready") *> optional decimal)
-    go        = string "!go" *> pure Go
-    notgo     = string "!notgo" *> pure NotGo
-    leave     = string "!leave" *> pure Leave
+    start     = Start         <$> (lexer (string "!start") *> decimal)
+    stop      = Stop          <$> (lexer (string "!stop")  *> decimal)
+    joing     = Join          <$> (lexer (string "!ready") *> optional decimal)
     numchoice = NumericChoice <$> decimal
-    mystart   = string "!info" *> pure MyStartup
-    detail    = string "!detail" *> pure ShortSituation
+    go        = string "!go"      *> pure Go
+    notgo     = string "!notgo"   *> pure NotGo
+    leave     = string "!leave"   *> pure Leave
+    mystart   = string "!info"    *> pure MyStartup
+    detail    = string "!detail"  *> pure ShortSituation
     details   = string "!details" *> pure DetailedSituation
 
 loadAssoc :: IO (M.Map Jid PlayerId)
