@@ -130,7 +130,7 @@ data LocalCommand = Register T.Text
                   deriving Show
 
 parseContent :: T.Text -> Either LocalCommand PlayerInput
-parseContent t = case parseOnly (Left <$> cmdparser <|> Right <$> cntparser) t of
+parseContent t = case parseOnly ((Left <$> cmdparser <|> Right <$> cntparser) <* endOfInput) t of
                      Right x -> x
                      _ -> Right (CustomCommand t)
     where
@@ -140,7 +140,7 @@ parseContent t = case parseOnly (Left <$> cmdparser <|> Right <$> cntparser) t o
     register  = Register <$> (lexer (string "!register") *> A.takeWhile isAlphaNum)
     help      = string "!help" *> pure Help
     cntparser :: Parser PlayerInput
-    cntparser = start <|> stop <|> joing <|> go <|> notgo <|> leave <|> numchoice <|> mystart <|> detail
+    cntparser = start <|> stop <|> joing <|> go <|> notgo <|> leave <|> numchoice <|> mystart <|> details <|> detail
     start     = Start <$> (lexer (string "!start") *> decimal)
     stop      = Stop <$> (lexer (string "!stop") *> decimal)
     joing     = Join <$> (lexer (string "!ready") *> optional decimal)
@@ -149,7 +149,8 @@ parseContent t = case parseOnly (Left <$> cmdparser <|> Right <$> cntparser) t o
     leave     = string "!leave" *> pure Leave
     numchoice = NumericChoice <$> decimal
     mystart   = string "!info" *> pure MyStartup
-    detail    = string "!detail" *> pure DetailedSituation
+    detail    = string "!detail" *> pure ShortSituation
+    details   = string "!details" *> pure DetailedSituation
 
 loadAssoc :: IO (M.Map Jid PlayerId)
 loadAssoc = do
@@ -207,7 +208,7 @@ runXmpp domain servername port username password confroom = do
                             case pa ^. at pjid of
                                 Just name -> writeTChan input (name, cnt)
                                 Nothing -> return ()
-                        Left Help -> sendTextContent sess (RUser pjid) "Available commands: !help !register !start !stop !ready !go !notgo !leave !info !detail !bot"
+                        Left Help -> sendTextContent sess (RUser pjid) "Available commands: !help !register !start !stop !ready !go !notgo !leave !info !detail !details !bot"
                         Left (Register name) -> join $ atomically $ do
                             let domsg = sendTextContent sess (RUser pjid)
                             pa <- readTVar playerAssoc

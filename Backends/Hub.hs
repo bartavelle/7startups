@@ -42,6 +42,7 @@ data PlayerInput = NumericChoice Int
                  | NotGo
                  | Leave
                  | MyStartup
+                 | ShortSituation
                  | DetailedSituation
                  | CustomCommand T.Text -- ^ This sucks a bit, but is used for custom interbackend communication
                  deriving (Eq, Show)
@@ -247,6 +248,7 @@ hub = asPipe (loop h)
             MyStartup -> getLastState pid >>= tp pid . maybe "Can't find the last game state" pst
                                                      . preview (traverse . playermap . ix pid)
                 where pst ps = playerStartup (ps ^. pCompany) (ps ^. pCompanyStage)
+            ShortSituation -> getLastState pid >>= tp pid . maybe "Can't find the last game state" (situationRecap . _playermap)
             DetailedSituation -> getLastState pid >>= tp pid . maybe "Can't find the last game state" (detailedSituationRecap . _playermap)
         handleGameInput :: GameId -> Interaction -> ModelM VOutput
         handleGameInput gameid i = case i of

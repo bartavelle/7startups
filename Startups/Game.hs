@@ -313,6 +313,7 @@ victoryPoints = use playermap >>= itraverse computeScore
 playGame :: GameMonad p (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 playGame = do
     initGame
+    actionRecap Age1 1 mempty
     mapM_ playAge [Age1 .. Age3]
     checkCopyCommunity
     victoryPoints
