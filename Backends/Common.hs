@@ -39,12 +39,12 @@ playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc 
                                                                                   <+> exchdesc exch
                                                                                   <> sidesc si
     where
-        secret n = if showmode == Private
+        secret n = if showmode == Private || a == Play
                        then n
                        else mempty
         actiondesc Play = withCardColor Infrastructure "Play"
         actiondesc Drop = withCardColor HeadHunting    "Drop"
-        actiondesc BuildCompany = withCardColor Community "Build a company stage using"
+        actiondesc BuildCompany = withCardColor Community "Build a company stage" <+> secret "using"
         nn n = pmap ^. ix pid . neighbor n
         exchdesc = sepBy ", " . map (uncurry exchdesc') . itoList
         exchdesc' neigh resources = "exch." <+> F.foldMap pe resources
@@ -89,7 +89,7 @@ quicksituation age turn stt = hdr </> situationRecap stt
         hdr = "Age" <+> pe age <+> ", turn" <+> numerical turn
 
 displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange) -> PrettyDoc
-displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Private pid pmap (pa, exch, Nothing) | (pid, (pa, exch)) <- M.toList actionmap ]
+displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Public pid pmap (pa, exch, Nothing) | (pid, (pa, exch)) <- M.toList actionmap ]
 
 displayVictory :: M.Map PlayerId (M.Map VictoryType VictoryPoint) -> PrettyDoc
 displayVictory = vcat . map displayLine . itoList
