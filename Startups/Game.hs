@@ -276,20 +276,23 @@ playAge age = do
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.
 checkCopyCommunity :: GameMonad p ()
-checkCopyCommunity = use playermap >>= itraverse_ checkPlayer
-    where
-        checkPlayer pid stt = when (has (cardEffects . _CopyCommunity) stt) $ do
-            -- get the violet cards from both neighbors
-            mvioletCards <- forM (stt ^.. pNeighborhood . traverse) $ \nid ->
-                toListOf (pCards . traverse . filtered (has (cType . _Community))) <$> getPlayerState nid
-            let violetCards = concat mvioletCards
-            case violetCards ^? _NonEmpty of
-                Just nevc -> do
-                    generalMessage (showPlayerId pid <+> "is going to use his community copy ability.")
-                    card <- askCardSafe Age3 pid nevc "Which community would you like to copy ?"
-                    generalMessage (showPlayerId pid <+> "copied" <+> shortCard card)
-                    playermap . ix pid . pCards %= (card:)
-                Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
+checkCopyCommunity = do
+    pm <- use playermap
+    ifor_ pm $ \pid stt -> when (has (cardEffects . _CopyCommunity) stt) $ do
+        -- get the violet cards from both neighbors
+        let neighs = stt ^.. pNeighborhood . both
+            violetCards = pm ^.. ifolded -- traverse de playerstate map
+                               . ifiltered (const . (`elem` neighs)) -- keep only the neighbors
+                               . pCards -- select each neighbor card list
+                               . folded -- fold through it
+                               . filtered (has (cType . _Community)) -- keep the violet cards
+        case violetCards ^? _NonEmpty of
+            Just nevc -> do
+                generalMessage (showPlayerId pid <+> "is going to use his community copy ability.")
+                card <- askCardSafe Age3 pid nevc "Which community would you like to copy ?"
+                generalMessage (showPlayerId pid <+> "copied" <+> shortCard card)
+                playermap . ix pid . pCards %= (card:)
+            Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
 
 victoryPoints :: GameStateOnly m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 victoryPoints = use playermap >>= itraverse computeScore
