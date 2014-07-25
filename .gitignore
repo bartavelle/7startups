@@ -1,3 +1,5 @@
 /dist
 /tags
 /codex.tags
+/.cabal-sandbox
+/cabal.sandbox.config
