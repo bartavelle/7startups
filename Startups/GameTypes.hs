@@ -70,8 +70,8 @@ _NonEmpty = prism' toList nonEmpty
 
 -- | This describe the capabilities needed to write the rules, when no
 -- interaction with the player is required.
-type NonInteractive m = (MonadState GameState m, Monad m, MonadError Message m, Functor m, Applicative m)
-type GameStateOnly m = (MonadState GameState m, Monad m, Functor m, Applicative m)
+type NonInteractive m = (MonadState GameState m, MonadError Message m, Functor m, Applicative m)
+type GameStateOnly m = (MonadState GameState m, Functor m, Applicative m)
 
 data CommunicationType = PlayerCom PlayerId Communication
                        | BroadcastCom Communication
