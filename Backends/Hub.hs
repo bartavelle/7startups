@@ -25,7 +25,6 @@ import Control.Applicative
 import Control.Concurrent (ThreadId,killThread)
 import Control.Concurrent.STM
 import Control.Monad.State.Strict (State,gets)
-import Control.Monad (void)
 import System.Random (newStdGen)
 
 import MVC

@@ -46,7 +46,7 @@ library
                         semigroups >= 0.13 && < 0.16,
                         stm == 2.4.*,
                         xml-types == 0.3.*,
-                        pontarius-xmpp == 0.4.*,
+                        pontarius-xmpp >= 0.4.0.2 && < 0.5,
                         network >= 2.4 &&  < 2.6,
                         mvc == 1.*,
                         attoparsec == 0.11.*,
