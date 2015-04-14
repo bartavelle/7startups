@@ -6,9 +6,10 @@ import Startups.Utils
 import Startups.Game
 import Startups.GameTypes
 import Backends.Common
+import Strategies.Random
+import Strategies.Compose
 
 import Control.Lens
-import Control.Applicative
 import System.Random
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Data.Char (isDigit)
@@ -21,18 +22,18 @@ readNumber = do
         then read n
         else -1
 
-consoleDict :: OperationDict Identity IO
-consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
+randStrat :: Strategy Identity IO
+randStrat = randStrategy (curry randomRIO)
+
+playerStrat :: Strategy Identity IO
+playerStrat = Strategy pd ac
     where
         pd age turn pid necards stt = do
             let pm = stt ^. playermap
                 x = allowableActions age pid necards pm
-            r <- case pid of
-                    "you" -> do
-                        print (PP.pretty (quicksituation age turn pm))
-                        print (PP.pretty (playerActionsDialog pid pm necards x))
-                        readNumber
-                    _ -> randomRIO (0, NE.length x - 1)
+            print (PP.pretty (quicksituation age turn pm))
+            print (PP.pretty (playerActionsDialog pid pm necards x))
+            r <- readNumber
             if r >= 0 && r < NE.length x
                 then let (pa,e,_) = x NE.!! r
                      in  return (return (pa, e))
@@ -40,15 +41,16 @@ consoleDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
         ac turn pid necards stt m = do
             let cards = _NonEmpty # necards
                 pm = stt ^. playermap
-            case pid of
-                "you" -> do
-                    print (PP.pretty m)
-                    print (PP.pretty (cardChoiceDialog pid pm cards))
-                    n <- readNumber
-                    if n >= 0 && n < length cards
-                        then return (return (cards !! n))
-                        else ac turn pid necards stt m
-                _ -> (return . (cards !!)) <$> randomRIO (0, length cards - 1)
+            print (PP.pretty m)
+            print (PP.pretty (cardChoiceDialog pid pm cards))
+            n <- readNumber
+            if n >= 0 && n < length cards
+                then return (return (cards !! n))
+                else ac turn pid necards stt m
+
+consoleDict :: OperationDict Identity IO
+consoleDict = OperationDict (composeStrat randStrat [("you", playerStrat)]) (return . Right . runIdentity) msg
+    where
         msg gs (PlayerCom "you" m) = com gs m
         msg gs (BroadcastCom m)    = com gs m
         msg _ _ = return ()

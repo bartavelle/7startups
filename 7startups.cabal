@@ -28,7 +28,9 @@ library
                         Backends.Pure,
                         Backends.Common,
                         Backends.Hub,
-                        Backends.XMPP
+                        Backends.XMPP,
+                        Strategies.Random,
+                        Strategies.Compose
   ghc-options:         -Wall
   ghc-prof-options:    -auto-all -caf-all
   other-modules:       STM.Promise
