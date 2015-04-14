@@ -7,7 +7,6 @@ import Startups.Cards
 
 import Data.Monoid
 import Data.String
-import Control.Monad.Error
 import qualified Data.Text as T
 import qualified Data.Foldable as F
 import Data.List (intersperse)
@@ -76,10 +75,6 @@ data PColor = PColorCard CardType
 
 instance IsString PrettyDoc where
     fromString = RawText . T.pack
-
-instance Error PrettyDoc where
-    noMsg = mempty
-    strMsg = fromString
 
 class PrettyE a where
     pe :: a -> PrettyDoc

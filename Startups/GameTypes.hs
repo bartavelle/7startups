@@ -19,7 +19,7 @@ import qualified Data.Text as T
 import qualified Data.Map.Strict as M
 import Control.Monad.Operational
 import Control.Monad.State.Strict
-import Control.Monad.Error
+import Control.Monad.Except
 import Data.List.NonEmpty
 import Control.Applicative
 import System.Random

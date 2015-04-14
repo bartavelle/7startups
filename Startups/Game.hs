@@ -15,7 +15,7 @@ import Startups.PrettyPrint
 import Control.Lens
 import Control.Monad
 import Control.Applicative
-import Control.Monad.Error (throwError)
+import Control.Monad.Except (throwError)
 import System.Random (randomR)
 import qualified Data.Map as M
 import qualified Data.MultiSet as MS
