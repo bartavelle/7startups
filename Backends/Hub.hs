@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs #-}
 
 module Backends.Hub where
 
@@ -205,7 +206,8 @@ hub = asPipe (loop h)
             CustomCommand x -> return (OCustom x)
             Join x -> handleJoin pid x
             NumericChoice n -> do
-                let notifySuccess a gs choicelist successFunction =
+                let notifySuccess :: (a ~ IxValue (f a), Int ~ Index (f a), Ixed (f a)) => IAsk -> GameState -> f a -> (a -> VOutput) -> ListT (State HubState) VOutput
+                    notifySuccess a gs choicelist successFunction =
                         case choicelist ^? ix n of
                             Just c -> do
                                 traverse . _GamePlaying . ix pid .= InGame (Just gs)
