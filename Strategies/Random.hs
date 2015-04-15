@@ -7,6 +7,7 @@ import qualified Data.List.NonEmpty as NE
 
 import Control.Lens
 import Control.Applicative
+import Prelude
 
 randStrategy :: (Monad m, Monad p, Functor m) => (Int -> Int -> m Int) -> Strategy p m
 randStrategy roll = Strategy pd ac
