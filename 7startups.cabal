@@ -42,7 +42,7 @@ library
                         random == 1.*,
                         split == 0.2.*,
                         operational == 0.2.*,
-                        semigroups >= 0.13 && < 0.16,
+                        semigroups >= 0.13 && < 0.17,
                         stm == 2.4.*,
                         xml-types == 0.3.*,
                         pontarius-xmpp >= 0.4.0.2 && < 0.5,
@@ -68,12 +68,12 @@ Executable console
     hs-source-dirs:       src
     main-is:              Console.hs
     ghc-options:          -Wall
-    build-depends:        base >=4.6 && <4.8, 7startups, random, ansi-wl-pprint, lens, semigroups
+    build-depends:        base, 7startups, random, ansi-wl-pprint, lens, semigroups
     default-language:     Haskell2010
 
 Executable xmpp
     hs-source-dirs:       src
     main-is:              Xmpp.hs
     ghc-options:          -Wall
-    build-depends:        base >=4.6 && <4.8, 7startups, text
+    build-depends:        base, 7startups, text
     default-language:     Haskell2010
