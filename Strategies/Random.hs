@@ -14,8 +14,10 @@ randStrategy roll = Strategy pd ac
     where
         pd age _ pid necards stt = do
             let pm = stt ^. playermap
-                x = allowableActions age pid necards pm
-            return . (\(pa,e,_) -> (pa,e)) . (x NE.!!) <$> roll 0 (NE.length x - 1)
+                allactions = NE.toList $ allowableActions age pid necards pm
+                nodrops = filter (\(PlayerAction actiontype _,_,_) -> actiontype /= Drop) allactions
+                actions = if null nodrops then allactions else nodrops
+            return . (\(pa,e,_) -> (pa,e)) . (actions !!) <$> roll 0 (length actions - 1)
         ac _ _ necards _ _ = do
             let cards = _NonEmpty # necards
             (return . (cards !!)) <$> roll 0 (length cards - 1)
