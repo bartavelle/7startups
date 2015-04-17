@@ -26,6 +26,7 @@ import System.Random (StdGen)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List (nub)
 import qualified Data.List.NonEmpty as NE
+import Prelude
 
 -- | We will use this type to define a custom monoid instance for Map k n,
 -- when n is numerical. This will be used to simplify some expressions. It

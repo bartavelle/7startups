@@ -9,32 +9,17 @@ import Control.Monad.State.Strict
 import System.Random
 import Control.Lens
 import qualified Data.Map.Strict as M
-import qualified Data.List.NonEmpty as NE
 
-pureDict :: OperationDict Identity (State StdGen)
-pureDict = OperationDict (Strategy pd ac) (return . Right . runIdentity) msg
+pureDict :: Strategy Identity (State StdGen) -> OperationDict Identity (State StdGen)
+pureDict st = OperationDict st (return . Right . runIdentity) msg
     where
-        roll :: Int -> State StdGen Int
-        roll x = do
-            g <- get
-            let (o,g') = randomR (0, x - 1) g
-            put g'
-            return o
-        pd age _ pid necards stt = do
-            let x = allowableActions age pid necards (stt ^. playermap)
-            n <- roll (NE.length x)
-            let (pe,e,_) = x NE.!! n
-            return (return (pe, e))
-        ac _ _ necards _ _ =
-            let lcards = _NonEmpty # necards
-            in  fmap (return . (lcards !!)) (roll (length lcards))
         msg _ _ = return ()
 
-runPure :: StdGen -> GameState -> GameMonad Identity a -> (GameState, Either Message a)
-runPure g gs o = evalState (runInterpreter pureDict gs o) g
+runPure :: Strategy Identity (State StdGen) -> StdGen -> GameState -> GameMonad Identity a -> (GameState, Either Message a)
+runPure st g gs o = evalState (runInterpreter (pureDict st) gs o) g
 
-pureGame :: StdGen -> [PlayerId] -> (GameState, Either Message (M.Map PlayerId (M.Map VictoryType VictoryPoint)))
-pureGame g playerlist =
+pureGame :: Strategy Identity (State StdGen) -> StdGen -> [PlayerId] -> (GameState, Either Message (M.Map PlayerId (M.Map VictoryType VictoryPoint)))
+pureGame st g playerlist =
     let gs = initialGameState g1 playerlist
         (g1, g2) = split g
-    in  runPure g2 gs playGame
+    in  runPure st g2 gs playGame

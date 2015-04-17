@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Strategies.Random where
 
 import Startups.Interpreter
@@ -5,6 +6,8 @@ import Startups.GameTypes
 import Startups.Utils
 import qualified Data.List.NonEmpty as NE
 
+import Control.Monad.State.Strict
+import System.Random (randomR, StdGen)
 import Control.Lens
 import Control.Applicative
 import Prelude
@@ -22,3 +25,9 @@ randStrategy roll = Strategy pd ac
             let cards = _NonEmpty # necards
             (return . (cards !!)) <$> roll 0 (length cards - 1)
 
+stdGenStateStrat :: (Monad p, MonadState StdGen m) => Strategy p m
+stdGenStateStrat = randStrategy $ \mi mx -> do
+    g <- get
+    let (o,g') = randomR (mi, mx) g
+    put g'
+    return o
