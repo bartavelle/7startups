@@ -6,16 +6,12 @@ packages:
 - '.'
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
-- aeson-0.11.0.0
 - async-2.0.2
-- base-orphans-0.5.2
 - contravariant-1.3.3
 - mvc-1.1.1
 - pontarius-xmpp-0.5.1
 - stringprep-1.0.0
-- text-1.2.2.0
 - xml-picklers-0.3.6
-- yaml-0.8.16
 
 # Override default flag values for local packages and extra-deps
 flags: {}
