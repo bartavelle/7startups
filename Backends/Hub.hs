@@ -116,9 +116,9 @@ makePrisms ''PlayerJoining
 makePrisms ''PlayerPlaying
 makePrisms ''VOutput
 
-type ModelM = ListT (State HubState)
+type ModelMonad = ListT (State HubState)
 
-playerDesc :: GameId -> ModelM Message
+playerDesc :: GameId -> ModelMonad Message
 playerDesc = fmap (maybe mempty (foldPretty . desc)) . preuse . ix
     where
         desc (GameJoining mj) = itoList mj & map (uncurry pj)
@@ -128,10 +128,10 @@ playerDesc = fmap (maybe mempty (foldPretty . desc)) . preuse . ix
         pl pid (InGame _) = showPlayerId pid
         pl pid (Awaiting _) = "⌛" <> showPlayerId pid
 
-filterGames :: (GameS -> Bool) -> ModelM [(GameId, GameS)]
+filterGames :: (GameS -> Bool) -> ModelMonad [(GameId, GameS)]
 filterGames prd = gets (itoListOf (itraversed . filtered prd))
 
-handleJoin :: PlayerId -> Maybe GameId -> ModelM VOutput
+handleJoin :: PlayerId -> Maybe GameId -> ModelMonad VOutput
 -- There are 3 cases when the player did not submit a game id.
 --
 -- Case 1 : no game are accepting players, we must create one first
@@ -166,7 +166,7 @@ handleJoin pid i =
                                                     ix gameid . _GameJoining . at pid ?= Joined
                                                     joinMessage gameid
 
-startGame :: GameId -> ModelM VOutput
+startGame :: GameId -> ModelMonad VOutput
 startGame gameid = preuse (ix gameid) >>= \gameinfo -> case gameinfo of
     Nothing -> return (Broadcast ("Game" <+> numerical gameid <+> "was not found"))
     Just (GamePlaying _) -> return (Broadcast ("Game" <+> numerical gameid <+> "is already started."))
@@ -183,13 +183,13 @@ hub :: Model HubState ControllerInput VOutput
 hub = asPipe (loop h)
     where
         -- gets the gameid a player in a specific state is
-        gameIdWithPrism :: PlayerId -> Traversal' PlayerJoining () -> ModelM (Maybe GameId)
+        gameIdWithPrism :: PlayerId -> Traversal' PlayerJoining () -> ModelMonad (Maybe GameId)
         gameIdWithPrism pid pjprism = do
             playerGame <- filterGames (has (_GameJoining . ix pid . pjprism))
             case playerGame of
                 [(gameid,_)] -> return (Just gameid)
                 _ -> return Nothing
-        h :: ControllerInput -> ModelM VOutput
+        h :: ControllerInput -> ModelMonad VOutput
         h i = case i of
                   GInput gameid gmi -> handleGameInput gameid gmi
                   PInput pid pli -> handlePlayerInput pid pli
@@ -201,7 +201,7 @@ hub = asPipe (loop h)
                 _ -> Nothing
         bc = return . Broadcast
         tp pid = return . TellPlayer pid
-        handlePlayerInput :: PlayerId -> PlayerInput -> ModelM VOutput
+        handlePlayerInput :: PlayerId -> PlayerInput -> ModelMonad VOutput
         handlePlayerInput pid i = case i of
             CustomCommand x -> return (OCustom x)
             Join x -> handleJoin pid x
@@ -251,7 +251,7 @@ hub = asPipe (loop h)
                 where pst ps = playerStartup (ps ^. pCompany) (ps ^. pCompanyStage)
             ShortSituation -> getLastState pid >>= tp pid . maybe "Can't find the last game state" (situationRecap . _playermap)
             DetailedSituation -> getLastState pid >>= tp pid . maybe "Can't find the last game state" (detailedSituationRecap . _playermap)
-        handleGameInput :: GameId -> Interaction -> ModelM VOutput
+        handleGameInput :: GameId -> Interaction -> ModelMonad VOutput
         handleGameInput gameid i = case i of
             SendingMessage (PlayerCom pid c) -> tp pid (displayCommunication c)
             SendingMessage (BroadcastCom c) -> bc (displayCommunication c)

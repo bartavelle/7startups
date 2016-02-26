@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, LambdaCase #-}
-module Backends.XMPP where
+module Xmpp.Backend where
 
 import Startups.Base
 import Startups.Cards
@@ -181,7 +181,7 @@ runXmpp :: HostName     -- ^ Domain
 runXmpp domain servername port username password confroom = do
     let auth Secured = [scramSha1 username Nothing password, plain username Nothing password]
         auth x = error (show x)
-        streamConf = def { connectionDetails = UseHost servername (PortNumber port) }
+        streamConf = def { connectionDetails = UseHost servername port }
         sessconf = def { sessionStreamConfiguration = streamConf, enableRoster = True }
         rconfroom = RChat (fromJust (jidFromText confroom))
     sess <- session domain (Just (auth, Nothing)) sessconf >>= \x -> case x of

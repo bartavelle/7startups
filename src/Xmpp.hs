@@ -1,6 +1,6 @@
 module Main where
 
-import Backends.XMPP
+import Xmpp.Backend
 import Backends.Hub
 
 import qualified Data.Text as T
