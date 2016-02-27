@@ -5,6 +5,8 @@ module Startups.Base where
 import qualified Data.Set as S
 import Control.Lens
 import Data.Monoid
+import Data.Aeson
+import Data.Aeson.TH
 
 data Age = Age1
          | Age2
@@ -49,19 +51,19 @@ advancedResources :: S.Set Resource
 advancedResources = S.fromList [Adoption, Vision, Youthfulness]
 
 newtype Poacher = Poacher { getPoacher :: Integer }
-    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
 newtype VictoryPoint = VictoryPoint { getVictoryPoint :: Integer }
-    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
 newtype Funding = Funding { getFunding :: Integer }
-    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
 newtype PlayerCount = PlayerCount { getPlayerCount :: Integer }
-    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
 newtype Turn = Turn { getTurn :: Integer }
-    deriving (Ord, Eq, Num, Integral, Real, Enum, Show)
+    deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
 instance Monoid Poacher where
     mempty = 0
@@ -88,3 +90,12 @@ data VictoryType = PoachingVictory
 
 makePrisms ''Age
 makePrisms ''PoachingOutcome
+
+$(deriveJSON defaultOptions ''VictoryType)
+$(deriveJSON defaultOptions ''PoachingOutcome)
+$(deriveJSON defaultOptions ''Age)
+$(deriveJSON defaultOptions ''Company)
+$(deriveJSON defaultOptions ''CompanyStage)
+$(deriveJSON defaultOptions ''CompanySide)
+$(deriveJSON defaultOptions ''CompanyProfile)
+$(deriveJSON defaultOptions ''Resource)

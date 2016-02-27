@@ -13,7 +13,7 @@ import Startups.Base
 import Startups.Cards
 import Startups.PrettyPrint
 
-import Control.Lens
+import Control.Lens hiding ((.=))
 
 import qualified Data.Text as T
 import qualified Data.Map.Strict as M
@@ -23,7 +23,8 @@ import Control.Monad.Except
 import Data.List.NonEmpty
 import Control.Applicative
 import System.Random
-
+import Data.Aeson
+import Data.Aeson.TH
 
 type PlayerId = T.Text
 
@@ -47,6 +48,13 @@ data PlayerState = PlayerState { _pCompany         :: CompanyProfile
 
 makeLenses ''GameState
 makeLenses ''PlayerState
+$(deriveJSON defaultOptions ''PlayerState)
+
+instance ToJSON GameState where
+    toJSON (GameState pm dp rnd) = object [ "playermap" .= pm
+                                          , "discardpile" .= dp
+                                          ]
+
 
 cardEffects :: Traversal' PlayerState Effect
 cardEffects = pCards . traverse . cEffect . traverse

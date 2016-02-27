@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Startups.Cards where
 
 import qualified Data.Set as S
@@ -8,7 +9,9 @@ import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.String
-import Control.Lens
+import Control.Lens hiding ((.=))
+import Data.Aeson
+import Data.Aeson.TH
 
 import Startups.Base
 
@@ -108,3 +111,21 @@ type Exchange = M.Map Neighbor (MS.MultiSet Resource)
 makePrisms ''CardType
 makePrisms ''Effect
 makeLenses ''Card
+
+instance ToJSON Cost where
+    toJSON (Cost c f) = object [ "resources" .= MS.toOccurList c
+                               , "funding"   .= f
+                               ]
+
+instance FromJSON Cost where
+    parseJSON = withObject "cost" $ \o -> Cost <$> (fmap MS.fromOccurList (o .: "resources"))
+                                               <*> o .: "funding"
+
+$(deriveJSON defaultOptions ''CardType)
+$(deriveJSON defaultOptions ''Effect)
+$(deriveJSON defaultOptions ''Condition)
+$(deriveJSON defaultOptions ''Neighbor)
+$(deriveJSON defaultOptions ''EffectDirection)
+$(deriveJSON defaultOptions ''Sharing)
+$(deriveJSON defaultOptions ''ResearchType)
+$(deriveJSON defaultOptions ''Card)
