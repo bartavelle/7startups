@@ -7,6 +7,7 @@ import Startups.CardList
 import Startups.GameTypes
 import Startups.Utils
 import Backends.Pure
+import Strategies.Random
 
 import Control.Lens
 import Data.List (foldl')
@@ -80,6 +81,6 @@ main = hspec $ do
                 seed <- arbitrary
                 nbplayers <- Test.QuickCheck.elements [3 .. 7]
                 return (seed, nbplayers :: Int)
-        it "end well" $ forAll gs $ \(seed, nbplayers) -> case pureGame (mkStdGen seed) (map (T.pack . show) [1 .. nbplayers]) of
+        it "end well" $ forAll gs $ \(seed, nbplayers) -> case pureGame stdGenStateStrat (mkStdGen seed) (map (T.pack . show) [1 .. nbplayers]) of
                                                               (_, Right _) -> True
                                                               _ -> False
