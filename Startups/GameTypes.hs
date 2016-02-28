@@ -34,7 +34,7 @@ showPlayerId = emph . pe
 data GameState = GameState { _playermap   :: M.Map PlayerId PlayerState
                            , _discardpile :: [Card]
                            , _rnd         :: StdGen
-                           }
+                           } deriving Eq
 
 type Neighborhood = (PlayerId, PlayerId)
 
