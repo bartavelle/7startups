@@ -10,6 +10,7 @@ import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.String
 import Control.Lens hiding ((.=))
+import Control.Monad
 import Data.Aeson
 import Data.Aeson.TH
 
@@ -115,6 +116,12 @@ instance Monoid Exchange where
 
 instance ToJSON Exchange where
     toJSON = toJSON . map (_2 %~ F.toList) . itoList . getExchange
+
+instance FromJSON Exchange where
+    parseJSON = fmap (RExchange . M.fromList) . (parseJSON >=> mapM parsePair)
+        where
+            parsePair (n,rs) = (,) <$> parseJSON n <*> parseMultiset rs
+            parseMultiset = fmap MS.fromList . parseJSON
 
 makePrisms ''CardType
 makePrisms ''Effect
