@@ -18,7 +18,7 @@ import STM.Promise
 import qualified Data.Map.Strict as M
 import qualified Data.Foldable as F
 import qualified Data.Text as T
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, fromList)
 import Data.Monoid
 
 import Control.Lens
@@ -27,6 +27,9 @@ import Control.Concurrent (ThreadId,killThread)
 import Control.Concurrent.STM
 import Control.Monad.State.Strict (State,gets)
 import System.Random (newStdGen)
+
+import Data.Aeson hiding ((.=))
+import Data.Aeson.TH
 
 import MVC
 
@@ -52,6 +55,12 @@ data IAskingCard     = IAskingCard   PlayerId Age (NonEmpty Card) GameState Mess
 
 data IAsk = AskingAction   IAskingAction  (PubFPM (PlayerAction, Exchange))
           | AskingCard     IAskingCard    (PubFPM Card)
+
+instance ToJSON a => ToJSON (NonEmpty a) where
+    toJSON = toJSON . F.toList
+
+$(deriveToJSON defaultOptions ''IAskingAction)
+$(deriveToJSON defaultOptions ''IAskingCard)
 
 getPid :: IAsk -> PlayerId
 getPid (AskingAction (IAskingAction pid _ _ _ _) _) = pid

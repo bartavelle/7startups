@@ -106,7 +106,15 @@ data Card = Card { _cName       :: T.Text
                         }
           deriving (Ord,Eq,Show)
 
-type Exchange = M.Map Neighbor (MS.MultiSet Resource)
+newtype Exchange = RExchange { getExchange :: M.Map Neighbor (MS.MultiSet Resource) }
+                   deriving (Show, Eq)
+
+instance Monoid Exchange where
+    mempty = RExchange mempty
+    mappend (RExchange a) (RExchange b) = RExchange (M.unionWith (<>) a b)
+
+instance ToJSON Exchange where
+    toJSON = toJSON . map (_2 %~ F.toList) . itoList . getExchange
 
 makePrisms ''CardType
 makePrisms ''Effect

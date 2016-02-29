@@ -184,7 +184,8 @@ findExchange toAcq cheapExchanges = runSearch (MS.toList toAcq)
                 rexchange = if MS.member t rp
                                 then map (addExchange NRight) (runSearch ts lp (MS.delete t rp))
                                 else []
-                addExchange v (e, m) = (M.insertWith (<>) v (MS.singleton t) e , m + cost v t)
+                addExchange :: Neighbor -> (Exchange, Funding) -> (Exchange, Funding)
+                addExchange v (e, m) = (e <> RExchange (M.singleton v (MS.singleton t)), m + cost v t)
             in  lexchange ++ rexchange
 
 -- | List all the ways a given card can be built. This is the most tricky

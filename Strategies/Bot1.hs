@@ -37,7 +37,7 @@ priority a = case a of
         buildcomp _ _ _ _ _ = Nothing
         points card e _ pid stt = Just (fromIntegral (getVictoryPoint v + (getFunding f - fromIntegral exchanged) `div` 3))
             where
-                exchanged = M.size e
+                exchanged = M.size (getExchange e)
                 (f,v) = cardEffectPreview pid card (stt ^. playermap)
         military card _ _ pid stt | poach == 0 = Nothing -- not a military card
                                   | all (< myscore) neighs = Nothing -- I am leader

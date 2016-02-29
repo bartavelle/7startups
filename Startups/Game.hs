@@ -101,7 +101,7 @@ getPlayerState pid = preuse (playermap . ix pid) >>= \m -> case m of
 -- than what he owns, hoping some other player with exchange something with
 -- him.
 resolveExchange :: NonInteractive m => PlayerId -> Exchange -> m (MS.MultiSet Resource, AddMap PlayerId Funding)
-resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' exch
+resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' (getExchange exch)
     where
         resolveExchange' neigh reslist = do
             stt <- use playermap

@@ -38,7 +38,7 @@ data ShowMode = Private | Public
 
 playerActionDesc :: ShowMode -> PlayerId -> M.Map PlayerId PlayerState -> (PlayerAction, Exchange, Maybe SpecialInformation) -> PrettyDoc
 playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc a <+> secret (cardName card)
-                                                                                  <+> exchdesc exch
+                                                                                  <+> exchdesc (getExchange exch)
                                                                                   <> sidesc si
     where
         secret n = if showmode == Private || a == Play

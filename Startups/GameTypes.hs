@@ -48,13 +48,6 @@ data PlayerState = PlayerState { _pCompany         :: CompanyProfile
 
 makeLenses ''GameState
 makeLenses ''PlayerState
-$(deriveJSON defaultOptions ''PlayerState)
-
-instance ToJSON GameState where
-    toJSON (GameState pm dp rnd) = object [ "playermap" .= pm
-                                          , "discardpile" .= dp
-                                          ]
-
 
 cardEffects :: Traversal' PlayerState Effect
 cardEffects = pCards . traverse . cEffect . traverse
@@ -138,3 +131,14 @@ instance PrettyE PlayerAction where
                      Play         -> "played"
                      Drop         -> "dropped"
                      BuildCompany -> "increase the company stage"
+
+$(deriveJSON defaultOptions ''PlayerState)
+$(deriveJSON defaultOptions ''PlayerAction)
+$(deriveJSON defaultOptions ''ActionType)
+
+instance ToJSON GameState where
+    toJSON (GameState pm dp rnd) = object [ "playermap" .= pm
+                                          , "discardpile" .= dp
+                                          ]
+
+
