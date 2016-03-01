@@ -2,9 +2,9 @@
 
 module Startups.Base where
 
+import Startups.Json
 import qualified Data.Set as S
 import Control.Lens
-import Data.Monoid
 import Data.Aeson
 import Data.Aeson.TH
 
@@ -91,11 +91,11 @@ data VictoryType = PoachingVictory
 makePrisms ''Age
 makePrisms ''PoachingOutcome
 
-$(deriveJSON defaultOptions ''VictoryType)
-$(deriveJSON defaultOptions ''PoachingOutcome)
-$(deriveJSON defaultOptions ''Age)
-$(deriveJSON defaultOptions ''Company)
-$(deriveJSON defaultOptions ''CompanyStage)
-$(deriveJSON defaultOptions ''CompanySide)
-$(deriveJSON defaultOptions ''CompanyProfile)
-$(deriveJSON defaultOptions ''Resource)
+$(deriveJSON baseOptions ''VictoryType)
+$(deriveJSON baseOptions ''PoachingOutcome)
+$(deriveJSON baseOptions ''Age)
+$(deriveJSON baseOptions ''Company)
+$(deriveJSON baseOptions ''CompanyStage)
+$(deriveJSON baseOptions ''CompanySide)
+$(deriveJSON baseOptions ''CompanyProfile)
+$(deriveJSON baseOptions ''Resource)

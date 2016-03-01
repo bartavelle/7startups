@@ -5,6 +5,7 @@
 
 module Backends.Hub where
 
+import Startups.Json
 import Startups.Base
 import Startups.Cards
 import Startups.GameTypes
@@ -18,11 +19,10 @@ import STM.Promise
 import qualified Data.Map.Strict as M
 import qualified Data.Foldable as F
 import qualified Data.Text as T
-import Data.List.NonEmpty (NonEmpty, fromList)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid
 
 import Control.Lens
-import Control.Applicative
 import Control.Concurrent (ThreadId,killThread)
 import Control.Concurrent.STM
 import Control.Monad.State.Strict (State,gets)
@@ -59,8 +59,8 @@ data IAsk = AskingAction   IAskingAction  (PubFPM (PlayerAction, Exchange))
 instance ToJSON a => ToJSON (NonEmpty a) where
     toJSON = toJSON . F.toList
 
-$(deriveToJSON defaultOptions ''IAskingAction)
-$(deriveToJSON defaultOptions ''IAskingCard)
+$(deriveToJSON baseOptions ''IAskingAction)
+$(deriveToJSON baseOptions ''IAskingCard)
 
 getPid :: IAsk -> PlayerId
 getPid (AskingAction (IAskingAction pid _ _ _ _) _) = pid

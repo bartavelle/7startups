@@ -25,6 +25,7 @@ library
                         Startups.Game,
                         Startups.PrettyPrint,
                         Startups.Interpreter,
+                        Startups.Json,
                         Backends.Pure,
                         Backends.Common,
                         Backends.Hub,

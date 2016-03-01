@@ -9,6 +9,7 @@
 
 module Startups.GameTypes where
 
+import Startups.Json
 import Startups.Base
 import Startups.Cards
 import Startups.PrettyPrint
@@ -21,7 +22,6 @@ import Control.Monad.Operational
 import Control.Monad.State.Strict
 import Control.Monad.Except
 import Data.List.NonEmpty
-import Control.Applicative
 import System.Random
 import Data.Aeson
 import Data.Aeson.TH
@@ -132,13 +132,13 @@ instance PrettyE PlayerAction where
                      Drop         -> "dropped"
                      BuildCompany -> "increase the company stage"
 
-$(deriveJSON defaultOptions ''PlayerState)
-$(deriveJSON defaultOptions ''PlayerAction)
-$(deriveJSON defaultOptions ''ActionType)
+$(deriveJSON baseOptions ''PlayerState)
+$(deriveJSON baseOptions ''PlayerAction)
+$(deriveJSON baseOptions ''ActionType)
 
 instance ToJSON GameState where
-    toJSON (GameState pm dp rnd) = object [ "playermap" .= pm
-                                          , "discardpile" .= dp
-                                          ]
+    toJSON (GameState pm dp _) = object [ "playermap" .= pm
+                                        , "discardpile" .= dp
+                                        ]
 
 
