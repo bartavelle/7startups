@@ -38,8 +38,11 @@ instance MonadTrans (Coroutine s) where
 instance MonadIO m => MonadIO (Coroutine s m) where
     liftIO = lift . liftIO
 
+suspend :: Monad m => (s, Coroutine s m r) -> Coroutine s m r
+suspend s = Coroutine (return (Left s))
+
 yield :: Monad m => x -> Coroutine x m ()
-yield x = Coroutine (return (Left (x, return ())))
+yield x = suspend (x, return ())
 
 data AP = AP Age Turn PlayerId (NonEmpty Card) GameState
 data AC = AC Age PlayerId (NonEmpty Card) GameState Message
