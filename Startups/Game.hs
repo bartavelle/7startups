@@ -211,7 +211,7 @@ playTurn age turn rawcardmap = do
     -- first gather all decisions promises
     pdecisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
     -- then await on all promised
-    decisions <- traverse (\(crds,p) -> (,) <$> pure crds <*> getPromise p) pdecisions
+    decisions <- traverse (\(crds,p) -> (,) <$> pure crds <*> getPromiseAction p) pdecisions
     results <- itraverse (resolveAction age) decisions
     -- first add the money gained from exchanges
     ifor_ (results ^. traverse . _2) $ \pid payout ->

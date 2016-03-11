@@ -83,7 +83,8 @@ data Communication = RawMessage PrettyDoc
 data GameInstr p a where
     PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange))
     AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr p (p Card)
-    GetPromise     :: p a -> GameInstr p a
+    GetPromiseCard :: p Card -> GameInstr p Card
+    GetPromiseAct  :: p (PlayerAction, Exchange) -> GameInstr p (PlayerAction, Exchange)
     Message        :: CommunicationType -> GameInstr p ()
     ThrowError     :: Message -> GameInstr p a -- ^ Used for the error instance
     CatchError     :: GameMonad p a -> (Message -> GameMonad p a) -> GameInstr p a
@@ -102,9 +103,13 @@ tellPlayer p = singleton . Message . PlayerCom p . RawMessage
 generalMessage :: Message -> GameMonad p ()
 generalMessage = singleton . Message . BroadcastCom . RawMessage
 
--- | Awaits a promise
-getPromise :: p a -> GameMonad p a
-getPromise = singleton . GetPromise
+-- | Awaits a "card" promise
+getPromiseCard :: p Card -> GameMonad p Card
+getPromiseCard = singleton . GetPromiseCard
+
+-- | Awaits an "action" promise
+getPromiseAction :: p (PlayerAction, Exchange) -> GameMonad p (PlayerAction, Exchange)
+getPromiseAction = singleton . GetPromiseAct
 
 -- | Gives a quick rundown of all actions
 actionRecap :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange) -> GameMonad p ()
@@ -120,7 +125,7 @@ instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where
 -- player doesn't introduce a new card in the game.
 askCardSafe :: Age -> PlayerId -> NonEmpty Card -> Message -> GameMonad p Card
 askCardSafe a p cl m = do
-    card <- singleton (AskCard a p cl m) >>= getPromise
+    card <- singleton (AskCard a p cl m) >>= getPromiseCard
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
 

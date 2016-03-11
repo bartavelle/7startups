@@ -26,10 +26,12 @@ library
                         Startups.PrettyPrint,
                         Startups.Interpreter,
                         Startups.Json,
+                        Startups.Exported,
                         Backends.Pure,
                         Backends.Common,
                         Backends.Coroutine,
                         Backends.Hub,
+                        Backends.GenericHub,
                         Strategies.Random,
                         Strategies.Compose,
                         Strategies.Bot1
@@ -56,7 +58,7 @@ library
                         directory == 1.2.*,
                         ansi-wl-pprint == 0.6.*,
                         transformers == 0.4.*,
-                        aeson
+                        hspec
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
@@ -65,7 +67,7 @@ Test-Suite tests
     type:                 exitcode-stdio-1.0
     ghc-options:          -Wall
     other-extensions:     OverloadedStrings
-    build-depends:        7startups, base, containers, hspec, QuickCheck, lens, text, random
+    build-depends:        7startups, base, containers, hspec, QuickCheck, lens, text, random, mtl, transformers
     main-is:              tests.hs
     default-language:     Haskell2010
 
