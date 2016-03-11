@@ -51,19 +51,21 @@ data Com p = CAP AP (p (PlayerAction, Exchange))
            | CAC AC (p Card)
            | MSG GameState CommunicationType
 
-runCR :: Monad m => (forall x. p x -> m x)
-                 -> (forall x. m (p x))
+runCR :: Monad m => (p Card -> m Card)
+                 -> (p (PlayerAction, Exchange) -> m (PlayerAction, Exchange))
+                 -> (m (p Card))
+                 -> (m (p (PlayerAction, Exchange)))
                  -> GameState
                  -> GameMonad p a
                  -> Coroutine (Com p) m (GameState, Either Message a)
-runCR getp mkp = runInterpreter dict
+runCR gpc gpa mkc mka = runInterpreter' dict
     where
-        dict = OperationDict (Strategy pa ac) (fmap Right . lift . getp) (\gs -> yield . MSG gs)
+        dict = OperationDict' (Strategy pa ac) (fmap Right . lift . gpa) (fmap Right . lift . gpc) (\gs -> yield . MSG gs)
         pa age turn pid clist gs = do
-            p <- lift mkp
+            p <- lift mka
             yield (CAP (AP age turn pid clist gs) p)
             return p
         ac age pid cards gs msg = do
-            p <- lift mkp
+            p <- lift mkc
             yield (CAC (AC age pid cards gs msg) p)
             return p
