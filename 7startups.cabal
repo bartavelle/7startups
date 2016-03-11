@@ -26,10 +26,12 @@ library
                         Startups.PrettyPrint,
                         Startups.Interpreter,
                         Startups.Json,
+                        Startups.Exported,
                         Backends.Pure,
                         Backends.Common,
                         Backends.Coroutine,
                         Backends.Hub,
+                        Backends.GenericHub,
                         Strategies.Random,
                         Strategies.Compose,
                         Strategies.Bot1
