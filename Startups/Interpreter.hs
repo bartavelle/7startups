@@ -36,13 +36,15 @@ evalInstrGen :: Monad m
 evalInstrGen _ gamestate (Return x) = return (gamestate, Right x)
 evalInstrGen dico gamestate (a :>>= f) =
     let runC a' = runInterpreter dico gamestate (f a')
+        gp x = do
+            o <- _doGetPromise dico x
+            case o of
+               Left rr -> return (gamestate, Left rr)
+               Right v -> runC v
     in  case a of
             PlayerDecision age turn pid clist -> _doPlayerDecision (_strat dico) age turn pid clist gamestate >>= runC
-            GetPromise x -> do
-                o <- _doGetPromise dico x
-                case o of
-                   Left rr -> return (gamestate, Left rr)
-                   Right v -> runC v
+            GetPromiseAct x -> gp x
+            GetPromiseCard x -> gp x
             AskCard age pid cards msg -> _doAskCard (_strat dico) age pid cards gamestate msg >>= runC
             Message com -> _doMessage dico gamestate com >>= runC
             ThrowError err -> return (gamestate, Left err)
