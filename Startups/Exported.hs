@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | Useful for safely exporting data without exposing hidden information
 module Startups.Exported where
 
@@ -11,6 +12,7 @@ import Control.Lens
 
 import Startups.Json
 import Startups.Base
+import Startups.Cards
 import Startups.GameTypes
 
 data ExportedPlayerState = ExportedPlayerState { _eCompany         :: CompanyProfile
@@ -24,6 +26,18 @@ data ExportedPlayerState = ExportedPlayerState { _eCompany         :: CompanyPro
 data ExportedGameState = ExportedGameState { _eplayermap   :: M.Map PlayerId ExportedPlayerState
                                            , _ediscardSize :: Int
                                            } deriving (Eq, Show)
+
+newtype GameId = GameId { _getGameId :: Integer }
+                 deriving (Show, Eq, Ord, Enum, Num, FromJSON, ToJSON)
+
+data PlayerStatus = Inactive
+                  | InGame GameId GameSummary Todo [Message]
+                  deriving (Show, Eq)
+
+data Todo = TodoAction Age Turn PlayerId [Card]
+          | TodoCard   Age PlayerId [Card] Message
+          | TodoNothing
+          deriving (Show, Eq)
 
 exportGameState :: GameState -> ExportedGameState
 exportGameState gs = ExportedGameState (fmap exportPlayerState (_playermap gs)) (length (_discardpile gs))
@@ -59,9 +73,35 @@ data GameSummary = Joining (M.Map PlayerId PlayerJoining)
 data PlayerActivity = Waiting | Playing
                     deriving (Show, Eq, Enum, Bounded)
 
+data PlayerError = AlreadyPlaying
+                 | GameAlreadyStarted
+                 | GameFinished
+                 | GameNotFound
+                 | PlayerNotInGame
+                 | CantPlayNow
+                 deriving (Show, Eq, Read, Enum, Ord, Bounded)
+
+data GameEvent = PlayerJoinedGame PlayerId
+               | GameCreated
+               | GameStarted [PlayerId]
+               | PlayerMustPlay PlayerId
+               | PlayerReady PlayerId PlayerJoining
+               | PCom PlayerId Message
+               | BCom Message
+               deriving (Show, Eq)
+
+makePrisms ''GameSummary
+makePrisms ''PlayerStatus
+makePrisms ''Todo
+makeLenses ''ExportedGameState
+makeLenses ''ExportedPlayerState
+$(deriveJSON baseOptions ''PlayerStatus)
+$(deriveJSON baseOptions ''Todo)
 $(deriveJSON baseOptions ''GameSummary)
 $(deriveJSON baseOptions ''PlayerJoining)
 $(deriveJSON baseOptions ''PlayerActivity)
+$(deriveJSON baseOptions ''PlayerError)
+$(deriveJSON baseOptions ''GameEvent)
 $(deriveJSON (dropOptions 2) ''ExportedGameState)
 $(deriveJSON (dropOptions 2) ''ExportedPlayerState)
 
