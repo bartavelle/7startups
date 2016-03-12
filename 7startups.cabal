@@ -58,6 +58,7 @@ library
                         directory == 1.2.*,
                         ansi-wl-pprint == 0.6.*,
                         transformers == 0.4.*,
+                        aeson,
                         hspec
   -- hs-source-dirs:      
   default-language:    Haskell2010
