@@ -156,7 +156,6 @@ main = hspec $ do
                 return hsc
             Right hs4 = res4
         it "Should be possible to play" $ do
-            res4 `shouldSatisfy` has _Right
             let InGame gid' _ todo messages = playerStatus hs4 "bob"
                 TodoAction age turn pid cards = todo
             gid' `shouldBe` 0
