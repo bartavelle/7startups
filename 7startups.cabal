@@ -29,7 +29,6 @@ library
                         Startups.Exported,
                         Backends.Pure,
                         Backends.Common,
-                        Backends.Coroutine,
                         Backends.Hub,
                         Backends.GenericHub,
                         Strategies.Random,
