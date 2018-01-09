@@ -9,6 +9,8 @@ import Backends.Hub
 
 import Network
 import Network.Xmpp as XMPP
+import qualified Network.Xmpp.Internal as XMPP
+import qualified Network.TLS as TLS
 import Control.Monad
 import Control.Applicative
 import Data.XML.Types
@@ -181,7 +183,8 @@ runXmpp :: HostName     -- ^ Domain
 runXmpp domain servername port username password confroom = do
     let auth Secured = [scramSha1 username Nothing password, plain username Nothing password]
         auth x = error (show x)
-        streamConf = def { connectionDetails = UseHost servername port }
+        streamConf' = def { connectionDetails = UseHost servername port, tlsBehaviour = XMPP.PreferPlain }
+        streamConf = streamConf' { tlsParams = (tlsParams streamConf') { TLS.clientHooks = def { TLS.onServerCertificate = \_ _ _ _ -> return [] }  } }
         sessconf = def { sessionStreamConfiguration = streamConf, enableRoster = True }
         rconfroom = RChat (fromJust (jidFromText confroom))
     sess <- session domain (Just (auth, Nothing)) sessconf >>= \x -> case x of
@@ -209,8 +212,13 @@ runXmpp domain servername port username password confroom = do
                                 Just name -> writeTChan input (name, cnt)
                                 Nothing -> return ()
                         Left Help -> sendTextContent sess (RUser pjid) "Available commands: !help !register !start !stop !ready !go !notgo !leave !info !detail !details !bot"
-                        Left (Register name) -> join $ atomically $ do
+                        Left (Register ename) -> join $ atomically $ do
                             let domsg = sendTextContent sess (RUser pjid)
+                                name = if T.null ename
+                                         then case jidToTexts pjid of
+                                                (_,_,Just n) -> n
+                                                _ -> jidToText pjid
+                                         else ename
                             pa <- readTVar playerAssoc
                             case pa ^. at pjid of
                                 Just oldname -> return $ domsg (showPlayerId oldname <+> "is already registered to this Jid")

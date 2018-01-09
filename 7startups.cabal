@@ -83,7 +83,7 @@ Executable xmpp
     main-is:              Xmpp.hs
     other-modules:        Xmpp.Backend
     ghc-options:          -Wall
-    build-depends:        base, 7startups, text, pontarius-xmpp == 0.5.*, lens,  containers, yaml, directory, network, xml-types, stm, ansi-wl-pprint, attoparsec
+    build-depends:        base, 7startups, text, pontarius-xmpp == 0.5.*, lens,  containers, yaml, directory, network, xml-types, stm, ansi-wl-pprint, attoparsec, tls
     default-language:     Haskell2010
 
 Executable testia
