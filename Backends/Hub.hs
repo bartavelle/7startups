@@ -56,9 +56,6 @@ data IAskingCard     = IAskingCard   PlayerId Age (NonEmpty Card) GameState Mess
 data IAsk = AskingAction   IAskingAction  (PubFPM (PlayerAction, Exchange))
           | AskingCard     IAskingCard    (PubFPM Card)
 
-instance ToJSON a => ToJSON (NonEmpty a) where
-    toJSON = toJSON . F.toList
-
 $(deriveToJSON baseOptions ''IAskingAction)
 $(deriveToJSON baseOptions ''IAskingCard)
 
