@@ -5,8 +5,8 @@ module Startups.Base where
 import Startups.Json
 import qualified Data.Set as S
 import Control.Lens
-import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson hiding (defaultOptions)
+import Elm.Derive
 
 data Age = Age1
          | Age2
@@ -91,11 +91,11 @@ data VictoryType = PoachingVictory
 makePrisms ''Age
 makePrisms ''PoachingOutcome
 
-$(deriveJSON baseOptions ''VictoryType)
-$(deriveJSON baseOptions ''PoachingOutcome)
-$(deriveJSON baseOptions ''Age)
-$(deriveJSON baseOptions ''Company)
-$(deriveJSON baseOptions ''CompanyStage)
-$(deriveJSON baseOptions ''CompanySide)
-$(deriveJSON baseOptions ''CompanyProfile)
-$(deriveJSON baseOptions ''Resource)
+$(deriveBoth baseOptions ''VictoryType)
+$(deriveBoth baseOptions ''PoachingOutcome)
+$(deriveBoth baseOptions ''Age)
+$(deriveBoth baseOptions ''Company)
+$(deriveBoth baseOptions ''CompanyStage)
+$(deriveBoth baseOptions ''CompanySide)
+$(deriveBoth baseOptions ''CompanyProfile)
+$(deriveBoth baseOptions ''Resource)

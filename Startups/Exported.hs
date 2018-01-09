@@ -4,8 +4,8 @@
 module Startups.Exported where
 
 import qualified Data.Map.Strict as M
-import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson hiding (defaultOptions)
+import Elm.Derive
 import Data.Aeson.Types (Parser)
 import Data.Text (Text)
 import Control.Lens
@@ -95,13 +95,13 @@ makePrisms ''PlayerStatus
 makePrisms ''Todo
 makeLenses ''ExportedGameState
 makeLenses ''ExportedPlayerState
-$(deriveJSON baseOptions ''PlayerStatus)
-$(deriveJSON baseOptions ''Todo)
-$(deriveJSON baseOptions ''GameSummary)
-$(deriveJSON baseOptions ''PlayerJoining)
-$(deriveJSON baseOptions ''PlayerActivity)
-$(deriveJSON baseOptions ''PlayerError)
-$(deriveJSON baseOptions ''GameEvent)
-$(deriveJSON (dropOptions 2) ''ExportedGameState)
-$(deriveJSON (dropOptions 2) ''ExportedPlayerState)
+$(deriveBoth baseOptions ''PlayerStatus)
+$(deriveBoth baseOptions ''Todo)
+$(deriveBoth baseOptions ''GameSummary)
+$(deriveBoth baseOptions ''PlayerJoining)
+$(deriveBoth baseOptions ''PlayerActivity)
+$(deriveBoth baseOptions ''PlayerError)
+$(deriveBoth baseOptions ''GameEvent)
+$(deriveBoth (dropOptions 2) ''ExportedGameState)
+$(deriveBoth (dropOptions 2) ''ExportedPlayerState)
 

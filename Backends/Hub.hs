@@ -28,7 +28,6 @@ import Control.Concurrent.STM
 import Control.Monad.State.Strict (State,gets)
 import System.Random (newStdGen)
 
-import Data.Aeson hiding ((.=))
 import Data.Aeson.TH
 
 import MVC

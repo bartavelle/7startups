@@ -11,8 +11,8 @@ import Data.Monoid
 import Data.String
 import Control.Lens hiding ((.=))
 import Control.Monad
-import Data.Aeson
-import Data.Aeson.TH
+import Data.Aeson hiding (defaultOptions)
+import Elm.Derive
 
 import Startups.Base
 
@@ -136,11 +136,11 @@ instance FromJSON Cost where
     parseJSON = withObject "cost" $ \o -> Cost <$> (fmap MS.fromOccurList (o .: "resources"))
                                                <*> o .: "funding"
 
-$(deriveJSON defaultOptions ''CardType)
-$(deriveJSON defaultOptions ''Effect)
-$(deriveJSON defaultOptions ''Condition)
-$(deriveJSON defaultOptions ''Neighbor)
-$(deriveJSON defaultOptions ''EffectDirection)
-$(deriveJSON defaultOptions ''Sharing)
-$(deriveJSON defaultOptions ''ResearchType)
-$(deriveJSON defaultOptions { fieldLabelModifier = drop 2 } ''Card)
+$(deriveBoth defaultOptions ''CardType)
+$(deriveBoth defaultOptions ''Effect)
+$(deriveBoth defaultOptions ''Condition)
+$(deriveBoth defaultOptions ''Neighbor)
+$(deriveBoth defaultOptions ''EffectDirection)
+$(deriveBoth defaultOptions ''Sharing)
+$(deriveBoth defaultOptions ''ResearchType)
+$(deriveBoth defaultOptions { fieldLabelModifier = drop 2 } ''Card)
