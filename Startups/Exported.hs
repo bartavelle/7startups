@@ -67,7 +67,8 @@ data PlayerJoining = Joined | Ready
 data GameSummary = Joining (M.Map PlayerId PlayerJoining)
                  | Zombie [PlayerId]
                  | Started ExportedGameState [(PlayerId, PlayerActivity, [Message])]
-                 | Finished (Either Message (M.Map PlayerId VictoryMap))
+                 | FinishedBad Message
+                 | Finished (M.Map PlayerId VictoryMap)
                  deriving (Eq, Show)
 
 data PlayerActivity = Waiting | Playing
@@ -105,4 +106,4 @@ $(deriveBoth baseOptions ''PlayerError)
 $(deriveBoth baseOptions ''GameEvent)
 $(deriveBoth (dropOptions 2) ''ExportedGameState)
 $(deriveBoth (dropOptions 2) ''ExportedPlayerState)
-
+$(deriveElmDef baseOptions ''VictoryMap)

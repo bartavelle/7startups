@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 -- | Some pretty printing, with specific constructors for the game
 module Startups.PrettyPrint where
 
@@ -12,7 +13,7 @@ import qualified Data.Foldable as F
 import Data.List (intersperse)
 import Control.Lens
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Data.Aeson
+import Elm.Derive
 
 data PrettyDoc = RawText T.Text
                | NewLine
@@ -264,8 +265,5 @@ instance PP.Pretty PrettyDoc where
         PResearch Scaling          -> PP.dullgreen "⚖ "
         PCompany (CompanyProfile c s) -> PP.string (show c) <> PP.string (show s)
 
-instance ToJSON PrettyDoc where
-    toJSON = String . T.pack . show . PP.pretty
-
-instance FromJSON PrettyDoc where
-    parseJSON = withText "PrettyDoc" (pure . RawText)
+$(deriveBoth defaultOptions ''PrettyDoc)
+$(deriveBoth defaultOptions ''PColor)

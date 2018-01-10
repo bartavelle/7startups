@@ -126,7 +126,7 @@ convertMCom mc = case mc of
 extractGameSummary :: GameS -> GameSummary
 extractGameSummary gs = case gs of
                             GameJoining m -> Joining m
-                            GameOver o -> Finished (fmap (fmap VictoryMap) o)
+                            GameOver o -> either FinishedBad (Finished . fmap VictoryMap) o
                             GamePlaying (GP pm _ _ _ _ gs') -> Started (exportGameState gs') $ do
                                 (pid, PlayerMessages blk msgs) <- itoList pm
                                 let activity = maybe Waiting (const Playing) blk
