@@ -4,6 +4,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Backends.GenericHub
     ( GameId
     , PromiseId
@@ -31,7 +35,7 @@ import Startups.Exported
 
 import Data.Aeson hiding ((.=))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Except
+import Control.Monad.Except
 import Control.Monad.Operational
 import Data.List.NonEmpty
 import qualified Data.Map.Strict as M
@@ -87,19 +91,21 @@ makePrisms ''Com
 makePrisms ''BlockingOn
 makeLenses ''GP
 makeLenses ''PlayerMessages
+makeWrapped ''HubState
 
 type GTrav x = Traversal' (M.Map GameId GameS) x
 
-zoomHub :: HubMonad m => GTrav a -> HubState -> PlayerError -> (a -> ExceptT PlayerError m a) -> ExceptT PlayerError m HubState
-zoomHub trav (HubState hs) rr a =
+zoomHub :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
+zoomHub trav rr a = do
+    HubState hs <- get
     case hs ^? trav of
-        Nothing -> throwE rr
+        Nothing -> throwError rr
         Just x -> do
             x' <- a x
-            return (HubState (hs & trav .~ x'))
+            put (HubState (hs & trav .~ x'))
 
-withGame :: HubMonad m => HubState -> GameId -> (GameS -> ExceptT PlayerError m GameS) -> ExceptT PlayerError m HubState
-withGame hs gid = zoomHub (ix gid) hs CantPlayNow
+withGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> (GameS -> m GameS) -> m ()
+withGame gid = zoomHub (ix gid) CantPlayNow
 
 _GamePlayers :: Traversal' GameS (S.Set PlayerId)
 _GamePlayers f s = case s of
@@ -150,89 +156,90 @@ playerStatus (HubState hs) pid =
             in  InGame gid (extractGameSummary gameS) todo messages
         [] -> Inactive
 
-newGame :: HubMonad m => HubState -> PlayerId -> m (GameId, HubState)
-newGame (HubState hs) pid = do
+newGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> m GameId
+newGame pid = do
+    HubState hs <- get
     let gid = maybe 0 (succ . fst . fst) (M.maxViewWithKey hs)
     tellEvent gid GameCreated
-    return (gid, HubState (hs & at gid ?~ GameJoining (M.singleton pid Joined)))
+    _Wrapped' . at gid ?= GameJoining (M.singleton pid Joined)
+    return gid
 
-joinGame :: HubMonad m => HubState -> PlayerId -> GameId -> ExceptT PlayerError m HubState
-joinGame nhs@(HubState hs) pid gid = do
+joinGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> GameId -> m ()
+joinGame pid gid = do
+    nhs@(HubState hs) <- get
     case playerGame nhs pid of
         Nothing -> return ()
-        Just _ -> throwE AlreadyPlaying
+        Just _ -> throwError AlreadyPlaying
     case hs ^? ix gid of
-        Nothing -> throwE GameNotFound
-        Just GamePlaying{} -> throwE GameAlreadyStarted
-        Just (GameOver _) -> throwE GameFinished
-        Just (GameJoining _) -> lift $ do
+        Nothing -> throwError GameNotFound
+        Just GamePlaying{} -> throwError GameAlreadyStarted
+        Just (GameOver _) -> throwError GameFinished
+        Just (GameJoining _) -> do
             tellEvent gid (PlayerJoinedGame pid)
-            checkGameStart (HubState (hs & ix gid . _GameJoining . at pid ?~ Joined)) gid
+            _Wrapped' . ix gid . _GameJoining . at pid ?= Joined
+            checkGameStart gid
 
-checkGameStart :: HubMonad m => HubState -> GameId -> m HubState
-checkGameStart nhs@(HubState hs) gid =
-    case hs ^? ix gid . _GameJoining of
-        Nothing -> return nhs
-        Just mp -> if M.size mp >= 7 || (all (== Ready) mp && M.size mp > 1)
-                       then startGame nhs gid (M.keysSet mp)
-                       else return nhs
+checkGameStart :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> m ()
+checkGameStart gid = do
+    gj <- preuse (_Wrapped' . ix gid . _GameJoining)
+    forM_ gj $ \mp ->
+      when (M.size mp >= 7 || (all (== Ready) mp && M.size mp > 1))
+        (startGame gid (M.keysSet mp))
 
-startGame :: HubMonad m => HubState -> GameId -> S.Set PlayerId -> m HubState
-startGame (HubState hs) gid players = do
+startGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> S.Set PlayerId -> m ()
+startGame gid players = do
     tellEvent gid (GameStarted (S.toList players))
     rgen <- getRand
     let gs = initialGameState rgen (S.toList players)
         gp = GP (M.fromSet (const defPlayerMessages) players) 1 NotBlocked M.empty M.empty gs
     gameS <- advanceGame gid gp gs playGame
-    return $ HubState (hs & at gid ?~ gameS)
+    _Wrapped' . at gid ?= gameS
 
-toggleReady :: HubMonad m => HubState -> GameId -> PlayerId -> ExceptT PlayerError m (PlayerJoining, HubState)
-toggleReady (HubState hs) gid pid =
-    case hs ^? ix gid of
-        Nothing -> throwE PlayerNotInGame
+toggleReady :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> PlayerId -> m PlayerJoining
+toggleReady gid pid = do
+    mgs <- preuse (_Wrapped' . ix gid)
+    case mgs of
+        Nothing -> throwError PlayerNotInGame
         Just (GameJoining mp) -> do
-            let toggle s = lift $ do
+            let toggle s = do
                     tellEvent gid (PlayerReady pid s)
-                    let hs' = hs & ix gid . _GameJoining . ix pid .~ s
-                    return (s, HubState hs')
+                    _Wrapped' . ix gid . _GameJoining . ix pid .= s
+                    return s
             case mp ^? ix pid of
-                Nothing -> throwE PlayerNotInGame -- should not happen
+                Nothing -> throwError PlayerNotInGame -- should not happen
                 Just Ready -> toggle Joined
-                Just Joined -> do
-                    (pj, nhs) <- toggle Ready
-                    fmap (pj,) (lift (checkGameStart nhs gid))
-        Just GamePlaying{} -> throwE GameAlreadyStarted
-        Just (GameOver _) -> throwE GameFinished
+                Just Joined -> toggle Ready <* checkGameStart gid
+        Just GamePlaying{} -> throwError GameAlreadyStarted
+        Just (GameOver _) -> throwError GameFinished
 
-playCard :: HubMonad m => Card -> HubState -> GameId -> PlayerId -> ExceptT PlayerError m HubState
+playCard :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => Card -> GameId -> PlayerId -> m ()
 playCard = genPlay _BlockingOnCard gpCardProm (_CAC . _2)
 
-playAction :: HubMonad m => PlayerAction -> Exchange -> HubState -> GameId -> PlayerId -> ExceptT PlayerError m HubState
+playAction :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerAction -> Exchange -> GameId -> PlayerId -> m ()
 playAction pa e = genPlay _BlockingOnAction gpActProm (_CAP . _2) (pa, e)
 
-genPlay :: HubMonad m
+genPlay :: (MonadError PlayerError m, HubMonad m, MonadState HubState m)
         => Prism' BlockingOn (GameState, Promise toplay, toplay -> GameMonad Promise GameResult)
         -> Lens' GP (M.Map (Promise toplay) toplay)
         -> Traversal' Com (Promise toplay)
         -> toplay
-        -> HubState
         -> GameId
         -> PlayerId
-        -> ExceptT PlayerError m HubState
-genPlay blockPrism promMap comPrism toplay hs gid pid = withGame hs gid $ \gameS ->
+        -> m ()
+genPlay blockPrism promMap comPrism toplay gid pid = withGame gid $ \gameS ->
     case gameS ^? _GamePlaying of
-        Nothing -> throwE CantPlayNow
+        Nothing -> throwError CantPlayNow
         Just gp -> case gp ^? gpPlayers . ix pid . curBlocking . _Just . comPrism of
-            Just prom -> do
-                let gp' = gp & gpPlayers . ix pid . curBlocking .~ Nothing
-                    pass = return $ GamePlaying $ gp' & promMap . at prom ?~ toplay
-                case gp' ^? gpBlocking . blockPrism of
-                    Just (gs, prom', act) ->
-                        if prom' == prom
-                            then lift $ advanceGame gid gp' gs (act toplay)
-                            else pass
-                    _ -> pass
-            _ -> throwE CantPlayNow
+          Just prom -> do
+              let gp' = gp & gpPlayers . ix pid . curBlocking .~ Nothing
+                  pass = return $ GamePlaying $ gp' & promMap . at prom ?~ toplay
+              case gp' ^? gpBlocking . blockPrism of
+                  Just (gs, prom', act) ->
+                      if prom' == prom
+                          then advanceGame gid gp' gs (act toplay)
+                          else pass
+                  _ -> pass
+          Nothing -> throwError CantPlayNow
 
 -- | The entry point to run the game and update its state
 advanceGame :: HubMonad m => GameId -> GP -> GameState -> GameMonad Promise GameResult -> m GameS

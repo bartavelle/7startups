@@ -79,6 +79,7 @@ data PlayerError = AlreadyPlaying
                  | GameNotFound
                  | PlayerNotInGame
                  | CantPlayNow
+                 | NotAuthorized
                  deriving (Show, Eq, Read, Enum, Ord, Bounded)
 
 data GameEvent = PlayerJoinedGame PlayerId

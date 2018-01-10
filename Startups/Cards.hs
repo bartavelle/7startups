@@ -13,6 +13,7 @@ import Control.Lens hiding ((.=))
 import Control.Monad
 import Data.Aeson hiding (defaultOptions)
 import Elm.Derive
+import Data.Char (toLower)
 
 import Startups.Base
 
@@ -143,4 +144,4 @@ $(deriveBoth defaultOptions ''Neighbor)
 $(deriveBoth defaultOptions ''EffectDirection)
 $(deriveBoth defaultOptions ''Sharing)
 $(deriveBoth defaultOptions ''ResearchType)
-$(deriveBoth defaultOptions { fieldLabelModifier = drop 2 } ''Card)
+$(deriveBoth defaultOptions { fieldLabelModifier = map toLower . drop 2 } ''Card)
