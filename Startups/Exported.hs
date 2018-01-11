@@ -6,8 +6,6 @@ module Startups.Exported where
 import qualified Data.Map.Strict as M
 import Data.Aeson hiding (defaultOptions)
 import Elm.Derive
-import Data.Aeson.Types (Parser)
-import Data.Text (Text)
 import Control.Lens
 
 import Startups.Json
@@ -60,13 +58,10 @@ newtype VictoryMap = VictoryMap { getVictoryMap :: M.Map VictoryType VictoryPoin
                      deriving (Eq, Show)
 
 instance ToJSON VictoryMap where
-    toJSON = toJSON . M.fromList . (traverse . _1 %~ show) . M.toList . getVictoryMap
+    toJSON = toJSON . M.toList . getVictoryMap
 
 instance FromJSON VictoryMap where
-    parseJSON = withObject "VictoryMap" (fmap (VictoryMap . M.fromList) . mapM readKey . itoList)
-        where
-            readKey :: (Text, Value) -> Parser (VictoryType, VictoryPoint)
-            readKey (k,v) = (,) <$> parseJSON (String k) <*> parseJSON v
+    parseJSON = fmap (VictoryMap . M.fromList) . parseJSON
 
 data PlayerJoining = Joined | Ready
                    deriving (Show, Eq, Enum, Bounded)
