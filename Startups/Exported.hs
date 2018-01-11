@@ -14,6 +14,7 @@ import Startups.Json
 import Startups.Base
 import Startups.Cards
 import Startups.GameTypes
+import Startups.Game (victoryPoints')
 
 data ExportedPlayerState = ExportedPlayerState { _eCompany         :: CompanyProfile
                                                , _eCompanyStage    :: CompanyStage
@@ -21,6 +22,7 @@ data ExportedPlayerState = ExportedPlayerState { _eCompany         :: CompanyPro
                                                , _eFunds           :: Funding
                                                , _eNeighborhood    :: Neighborhood
                                                , _ePoachingResults :: [PoachingOutcome]
+                                               , _eVictory         :: VictoryMap
                                                } deriving (Eq, Show)
 
 data ExportedGameState = ExportedGameState { _eplayermap   :: M.Map PlayerId ExportedPlayerState
@@ -40,14 +42,19 @@ data Todo = TodoAction Age Turn PlayerId [Card]
           deriving (Show, Eq)
 
 exportGameState :: GameState -> ExportedGameState
-exportGameState gs = ExportedGameState (fmap exportPlayerState (_playermap gs)) (length (_discardpile gs))
-    where
-        exportPlayerState pm = ExportedPlayerState (_pCompany pm)
-                                                   (_pCompanyStage pm)
-                                                   (length (_pCards pm))
-                                                   (_pFunds pm)
-                                                   (_pNeighborhood pm)
-                                                   (_pPoachingResults pm)
+exportGameState gs =
+  ExportedGameState (M.mapWithKey exportPlayerState stt) (length (_discardpile gs))
+  where
+    stt = _playermap gs
+    vpoints = victoryPoints' stt
+    exportPlayerState playername pm
+      = ExportedPlayerState (_pCompany pm)
+                            (_pCompanyStage pm)
+                            (length (_pCards pm))
+                            (_pFunds pm)
+                            (_pNeighborhood pm)
+                            (_pPoachingResults pm)
+                            (VictoryMap (vpoints ^. ix playername))
 
 newtype VictoryMap = VictoryMap { getVictoryMap :: M.Map VictoryType VictoryPoint }
                      deriving (Eq, Show)

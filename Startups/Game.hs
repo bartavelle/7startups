@@ -295,21 +295,23 @@ checkCopyCommunity = do
             Nothing -> tellPlayer pid (emph "There were no violet cards bought by your neighbors. You can't use your copy capacity.")
 
 victoryPoints :: GameStateOnly m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
-victoryPoints = use playermap >>= itraverse computeScore
+victoryPoints = victoryPoints' <$> use playermap
+
+victoryPoints' :: M.Map PlayerId PlayerState -> M.Map PlayerId (M.Map VictoryType VictoryPoint)
+victoryPoints' stt = M.mapWithKey computeScore stt
     where
-        computeScore pid playerState = do
-            let poaching = (PoachingVictory, playerState ^. pPoachingResults . traverse . to poachScore)
-                poachScore Defeat = -1
-                poachScore (Victory Age1) = 1
-                poachScore (Victory Age2) = 3
-                poachScore (Victory Age3) = 5
-                funding = (FundingVictory, fromIntegral (playerState ^. pFunds `div` 3))
-                scienceTypes = playerState ^.. cardEffects . _RnD
-                scienceJokers = length (playerState ^.. cardEffects . _ScientificBreakthrough)
-                research = (RnDVictory, scienceScore scienceTypes scienceJokers)
-            stt <- use playermap
-            let cardPoints = playerState ^.. pCards . traverse . to (\c -> getCardVictory pid c stt) . folded
-            return $ M.fromListWith (+) $ poaching : funding : research : cardPoints
+      computeScore pid playerState =
+          let poaching = (PoachingVictory, playerState ^. pPoachingResults . traverse . to poachScore)
+              poachScore Defeat = -1
+              poachScore (Victory Age1) = 1
+              poachScore (Victory Age2) = 3
+              poachScore (Victory Age3) = 5
+              funding = (FundingVictory, fromIntegral (playerState ^. pFunds `div` 3))
+              scienceTypes = playerState ^.. cardEffects . _RnD
+              scienceJokers = length (playerState ^.. cardEffects . _ScientificBreakthrough)
+              research = (RnDVictory, scienceScore scienceTypes scienceJokers)
+              cardPoints = playerState ^.. pCards . traverse . to (\c -> getCardVictory pid c stt) . folded
+          in  M.fromListWith (+) $ poaching : funding : research : cardPoints
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.
