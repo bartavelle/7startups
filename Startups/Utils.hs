@@ -156,11 +156,6 @@ getCardVictory pid card stt = card ^.. cEffect . traverse . _AddVictory . to com
     where
         computeVictory (vtype, vpoints, vcond) = (vtype, countConditionTrigger pid vcond stt * vpoints)
 
--- | A data structure that represents special capabilities that are used
--- when playing a card.
-data SpecialInformation = UseOpportunity
-                        deriving Eq
-
 -- | Gets the list of cheap resources, for each neighbor
 getCheapExchanges :: PlayerState -> M.Map Neighbor (S.Set Resource)
 getCheapExchanges ps = M.fromListWith (<>) $ do

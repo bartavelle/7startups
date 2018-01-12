@@ -34,7 +34,7 @@ data PlayerStatus = Inactive
                   | InGame GameId GameSummary Todo [Message]
                   deriving (Show, Eq)
 
-data Todo = TodoAction Age Turn PlayerId [Card]
+data Todo = TodoAction Age Turn PlayerId [Card] [(PlayerAction, Exchange, Maybe SpecialInformation)]
           | TodoCard   Age PlayerId [Card] Message
           | TodoNothing
           deriving (Show, Eq)

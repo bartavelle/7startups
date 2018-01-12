@@ -24,7 +24,7 @@ import Control.Monad.Except
 import Data.List.NonEmpty
 import System.Random
 import Data.Aeson
-import Data.Aeson.TH
+import Elm.Derive
 
 type PlayerId = T.Text
 
@@ -62,9 +62,14 @@ neighbor NRight = pNeighborhood . _2
 type Message = PrettyDoc
 
 data PlayerAction = PlayerAction ActionType Card
-                  deriving Eq
+                  deriving (Show, Eq)
 data ActionType = Play | Drop | BuildCompany
-                deriving Eq
+                deriving (Show, Eq)
+
+-- | A data structure that represents special capabilities that are used
+-- -- when playing a card.
+data SpecialInformation = UseOpportunity
+                        deriving (Show, Eq)
 
 _NonEmpty :: Prism' [a] (NonEmpty a)
 _NonEmpty = prism' toList nonEmpty
@@ -137,9 +142,10 @@ instance PrettyE PlayerAction where
                      Drop         -> "dropped"
                      BuildCompany -> "increase the company stage"
 
-$(deriveJSON baseOptions ''PlayerState)
-$(deriveJSON baseOptions ''PlayerAction)
-$(deriveJSON baseOptions ''ActionType)
+$(deriveBoth baseOptions ''PlayerState)
+$(deriveBoth baseOptions ''PlayerAction)
+$(deriveBoth baseOptions ''ActionType)
+$(deriveBoth baseOptions ''SpecialInformation)
 
 instance ToJSON GameState where
     toJSON (GameState pm dp _) = object [ "playermap" .= pm

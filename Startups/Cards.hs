@@ -137,6 +137,7 @@ instance FromJSON Cost where
     parseJSON = withObject "cost" $ \o -> Cost <$> (fmap MS.fromOccurList (o .: "resources"))
                                                <*> o .: "funding"
 
+$(deriveElmDef defaultOptions ''Exchange)
 $(deriveBoth defaultOptions ''CardType)
 $(deriveBoth defaultOptions ''Effect)
 $(deriveBoth defaultOptions ''Condition)
