@@ -16,7 +16,7 @@ import Startups.Game (victoryPoints')
 
 data ExportedPlayerState = ExportedPlayerState { _eCompany         :: CompanyProfile
                                                , _eCompanyStage    :: CompanyStage
-                                               , _eCardsCount      :: Int
+                                               , _eCards           :: [Card]
                                                , _eFunds           :: Funding
                                                , _eNeighborhood    :: Neighborhood
                                                , _ePoachingResults :: [PoachingOutcome]
@@ -48,7 +48,7 @@ exportGameState gs =
     exportPlayerState playername pm
       = ExportedPlayerState (_pCompany pm)
                             (_pCompanyStage pm)
-                            (length (_pCards pm))
+                            (_pCards pm)
                             (_pFunds pm)
                             (_pNeighborhood pm)
                             (_pPoachingResults pm)
