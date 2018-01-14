@@ -11,14 +11,14 @@ import Elm.Derive
 data Age = Age1
          | Age2
          | Age3
-         deriving (Ord,Eq,Enum,Show)
+         deriving (Ord,Eq,Enum,Show, Bounded)
 
 data CompanyStage = Project
                   | Stage1
                   | Stage2
                   | Stage3
                   | Stage4
-                  deriving (Ord,Eq,Enum,Show)
+                  deriving (Ord,Eq,Enum,Show, Bounded)
 
 data Company = Facebook     -- ^ Rhodes
              | Twitter      -- ^ Alexandria
@@ -27,10 +27,10 @@ data Company = Facebook     -- ^ Rhodes
              | Yahoo        -- ^ Zeus statue
              | Amazon       -- ^ Halicarnasse
              | Microsoft    -- ^ Gizeh
-             deriving (Eq, Ord, Enum, Show)
+             deriving (Eq, Ord, Enum, Show, Bounded)
 
 data CompanySide = A | B
-                 deriving (Eq, Ord, Enum, Show)
+                 deriving (Eq, Ord, Enum, Show, Bounded)
 
 data CompanyProfile = CompanyProfile Company CompanySide
                     deriving (Eq, Ord, Show)
@@ -42,7 +42,7 @@ data Resource = Youthfulness -- ^ Glass
               | Operations   -- ^ Stone
               | Marketing    -- ^ Wood
               | Finance      -- ^ Ore
-              deriving (Ord, Eq, Show)
+              deriving (Ord, Eq, Show, Enum, Bounded)
 
 baseResources :: S.Set Resource
 baseResources = S.fromList [Development, Operations, Marketing, Finance]
