@@ -167,7 +167,7 @@ newGame pid = do
     _Wrapped' . at gid ?= GameJoining (M.singleton pid Joined)
     return gid
 
-joinGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> GameId -> m ()
+joinGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> GameId -> m Bool
 joinGame pid gid = do
     nhs@(HubState hs) <- get
     case playerGame nhs pid of
@@ -182,12 +182,13 @@ joinGame pid gid = do
             _Wrapped' . ix gid . _GameJoining . at pid ?= Joined
             checkGameStart gid
 
-checkGameStart :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> m ()
+checkGameStart :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> m Bool
 checkGameStart gid = do
     gj <- preuse (_Wrapped' . ix gid . _GameJoining)
-    forM_ gj $ \mp ->
-      when (M.size mp >= 7 || (all (== Ready) mp && M.size mp > 1))
-        (startGame gid (M.keysSet mp))
+    case gj of
+      Just mp | M.size mp >= 7 || (all (== Ready) mp && M.size mp > 1)
+        -> True <$ startGame gid (M.keysSet mp)
+      _ -> return False
 
 startGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> S.Set PlayerId -> m ()
 startGame gid players = do

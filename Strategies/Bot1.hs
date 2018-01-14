@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE GADTs #-}
 module Strategies.Bot1 where
 
@@ -61,10 +62,10 @@ priority a = case a of
                   resChoice = S.size (card ^. cEffect . folded . _ResourceChoice . _1)
 
 
-bot1 :: (Applicative p, Monad m) => Strategy p m
-bot1 = Strategy pd ac
+bot1 :: Monad m => (forall a. a -> p a) -> Strategy p m
+bot1 mkPromise = Strategy pd ac
     where
-        ac age pid necards stt _ = return $ pure $ snd $ head $ sortOn (negate . fst) $ do
+        ac age pid necards stt _ = return $ mkPromise $ snd $ head $ sortOn (negate . fst) $ do
             card <- NE.toList necards
             priofunc <- priority age
             let s = priofunc (PlayerAction Play card) mempty Nothing pid stt
@@ -77,7 +78,7 @@ bot1 = Strategy pd ac
                     let s = priofunc act exch special pid stt
                     r <- s ^.. folded
                     return (r, (act, exch))
-            in  return $ pure $ snd $ head a
+            in  return $ mkPromise $ snd $ head a
 
 
 
