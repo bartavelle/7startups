@@ -120,8 +120,11 @@ _GamePlayers f s = case s of
 convertMCom :: Maybe Com -> Todo
 convertMCom mc = case mc of
                      Nothing -> TodoNothing
-                     Just (CAP (AP age turn pid cards gs) _) -> TodoAction age turn pid (toList cards) (toList (allowableActions age pid cards (gs ^. playermap)))
-                     Just (CAC (AC age pid cards _ msg) _)  -> TodoCard   age pid (toList cards) msg
+                     Just (CAP (AP age turn pid cards gs) _) -> TodoAction age turn pid (withEffects pid (gs ^. playermap) <$> toList cards) (toList (allowableActions age pid cards (gs ^. playermap)))
+                     Just (CAC (AC age pid cards gs msg) _)  -> TodoCard   age pid (withEffects pid (gs ^. playermap) <$> toList cards) msg
+  where withEffects pid pmap c =
+          let (f,v) = cardEffectPreview pid c pmap
+          in  (c,f,v)
 
 extractGameSummary :: GameS -> GameSummary
 extractGameSummary gs = case gs of
