@@ -186,7 +186,7 @@ checkGameStart :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) 
 checkGameStart gid = do
     gj <- preuse (_Wrapped' . ix gid . _GameJoining)
     case gj of
-      Just mp | M.size mp >= 7 || (all (== Ready) mp && M.size mp > 1)
+      Just mp | M.size mp >= 7 || (all (== Ready) mp && M.size mp > 2)
         -> True <$ startGame gid (M.keysSet mp)
       _ -> return False
 
