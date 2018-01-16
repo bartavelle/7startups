@@ -24,6 +24,8 @@ module Backends.GenericHub
     , toggleReady
     , playCard
     , playAction
+    , PureHub
+    , runPureHub
     ) where
 
 import Startups.Base
@@ -37,6 +39,7 @@ import Data.Aeson hiding ((.=))
 import Control.Monad.State.Strict
 import Control.Monad.Except
 import Control.Monad.Operational
+import Control.Monad.RSS.Strict
 import Data.List.NonEmpty
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
@@ -94,6 +97,35 @@ makeLenses ''PlayerMessages
 makeWrapped ''HubState
 
 type GTrav x = Traversal' (M.Map GameId GameS) x
+
+newtype PureHub time a = PureHub { getPureHub :: RSST (time, StdGen) ([(time, GameId, GameEvent)]) HubState (Except PlayerError) a }
+                         deriving (Functor, Applicative, Monad)
+
+runPureHub :: PureHub time a -> time -> StdGen -> HubState -> Either PlayerError (a, HubState, [(time, GameId, GameEvent)])
+runPureHub a time stdgen hs = runExcept (runRSST (getPureHub a) (time, stdgen) hs)
+
+instance MonadWriter [(time, GameId, GameEvent)] (PureHub time) where
+  tell = PureHub . tell
+  listen = PureHub . listen . getPureHub
+  pass = PureHub . pass . getPureHub
+
+instance MonadReader (time, StdGen) (PureHub time) where
+  ask = PureHub ask
+  local f m = PureHub (local f (getPureHub m))
+
+instance MonadState HubState (PureHub time) where
+  state f = PureHub (state f)
+
+instance MonadError PlayerError (PureHub time) where
+  throwError = PureHub . throwError
+  catchError e h = PureHub (catchError (getPureHub e) (getPureHub . h))
+
+instance HubMonad (PureHub time) where
+  getRand = asks snd
+  tellEvent gid event = do
+    now <- asks fst
+    tell [(now,gid,event)]
+
 
 zoomHub :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
 zoomHub trav rr a = do
@@ -236,13 +268,13 @@ genPlay blockPrism promMap comPrism toplay gid pid = withGame gid $ \gameS ->
         Just gp -> case gp ^? gpPlayers . ix pid . curBlocking . _Just . comPrism of
           Just prom -> do
               let gp' = gp & gpPlayers . ix pid . curBlocking .~ Nothing
-                  pass = return $ GamePlaying $ gp' & promMap . at prom ?~ toplay
+                  finished = return $ GamePlaying $ gp' & promMap . at prom ?~ toplay
               case gp' ^? gpBlocking . blockPrism of
                   Just (gs, prom', act) ->
                       if prom' == prom
                           then advanceGame gid gp' gs (act toplay)
-                          else pass
-                  _ -> pass
+                          else finished
+                  _ -> finished
           Nothing -> throwError CantPlayNow
 
 -- | The entry point to run the game and update its state
