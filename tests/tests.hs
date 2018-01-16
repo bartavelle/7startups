@@ -63,13 +63,6 @@ testState = GameState (M.fromList players) [] (mkStdGen 5)
                                                                        , "Standing Desks"
                                                                        ]
 
-newtype HubWriter a = HubWriter { getHubWriter :: Writer [(GameId, GameEvent)] a }
-                      deriving (Functor, Applicative, Monad, MonadWriter [(GameId, GameEvent)])
-
-instance HubMonad HubWriter where
-    getRand = return (mkStdGen 42)
-    tellEvent gid e = tell [(gid, e)]
-
 main :: IO ()
 main = hspec $ do
     describe "Cards" $ do
@@ -99,46 +92,50 @@ main = hspec $ do
 
     describe "Hub" $ do
         let mhs = initialHubstate
-            runHubE :: ExceptT PlayerError HubWriter a -> (Either PlayerError a, [(GameId, GameEvent)])
-            runHubE = runWriter . getHubWriter . runExceptT
-            runHub :: HubWriter a -> (a, [(GameId, GameEvent)])
-            runHub = runWriter . getHubWriter
-            shouldGiveError act err = case runHubE act of
-                                          (Left rr, _) -> rr `shouldBe` err
+            runHubE :: PureHub () a -> HubState -> Either PlayerError (a, HubState, [((), GameId, GameEvent)])
+            runHubE a hs = runPureHub a () (mkStdGen 42) hs
+            runHub :: PureHub () a -> (a, HubState, [((), GameId, GameEvent)])
+            runHub a = case runHubE a mhs of
+                         Left rr -> error (show rr)
+                         Right x -> x
+            shouldGiveError act hs err = case runHubE act hs of
+                                          Left rr -> rr `shouldBe` err
                                           _ -> fail "Should have failed"
         it "Should start with an empty game" $ games mhs `shouldBe` mempty
-        it "Should not enter nonexistent games" $ joinGame mhs "bob" 12 `shouldGiveError` GameNotFound
-        let ((gid, hs1),msgs) = runHub (newGame mhs "bob")
+        it "Should not enter nonexistent games" $ shouldGiveError (joinGame "bob" 12) mhs GameNotFound
+        let (gid, hs1, msgs) = runHub (newGame "bob")
         it "Should create a new game" $ do
             gid `shouldBe` 0
-            msgs `shouldBe` [(0,GameCreated)]
+            msgs `shouldBe` [((), 0,GameCreated)]
             games hs1 `shouldBe` M.singleton 0 (Joining (M.singleton "bob" Joined))
-        let (res2, msgs2) = runHubE (joinGame hs1 "garry" 0 >>= \hs' -> joinGame hs' "john" 0)
-            Right hs2 = res2
+        let res = runHubE (joinGame "garry" 0 >> joinGame "john" 0) hs1
+            Right (_, hs2, msgs2) = res
         it "Should register other players" $ do
-            case res2 of
+            case res of
                 Left rr -> fail (show rr)
                 Right _ -> return ()
-            msgs2 `shouldBe` [(0, PlayerJoinedGame "garry"), (0, PlayerJoinedGame "john")]
+            msgs2 `shouldBe` [((), 0, PlayerJoinedGame "garry"), ((), 0, PlayerJoinedGame "john")]
             games hs2 `shouldBe` M.singleton 0 (Joining (M.fromList [("bob", Joined), ("garry", Joined), ("john", Joined)]))
-        let (res3, msgs3) = runHubE $ do
-                (_, hsa) <- toggleReady hs2 0 "bob"
-                (_, hsb) <- toggleReady hsa 0 "garry"
-                (_, hsc) <- toggleReady hsb 0 "john"
-                return hsc
-            Right hs3 = res3
+        let res3 = runHubE a hs2
+            a = toggleReady 0 "bob"
+             >> toggleReady 0 "garry"
+             >> toggleReady 0 "john"
+            Right (_, hs3, msgs3) = res3
         it "Should toggle status until game starts" $ do
-            msgs3 `shouldBe` [ (0, PlayerReady "bob" Ready)
-                             , (0, PlayerReady "garry" Ready)
-                             , (0, PlayerReady "john" Ready)
-                             , (0, GameStarted ["bob","garry","john"])
-                             , (0, PlayerMustPlay "bob")
-                             , (0, PlayerMustPlay "garry")
-                             , (0, PlayerMustPlay "john")
+            case res3 of
+              Left rr -> fail (show rr)
+              Right _ -> return ()
+            msgs3 `shouldBe` [ ((), 0, PlayerReady "bob" Ready)
+                             , ((), 0, PlayerReady "garry" Ready)
+                             , ((), 0, PlayerReady "john" Ready)
+                             , ((), 0, GameStarted ["bob","garry","john"])
+                             , ((), 0, PlayerMustPlay "bob")
+                             , ((), 0, PlayerMustPlay "garry")
+                             , ((), 0, PlayerMustPlay "john")
                              ]
         it "Should start the game properly" $ do
             let InGame gid' _ todo messages = playerStatus hs3 "bob"
-                TodoAction age turn pid cards = todo
+                TodoAction age turn pid cards _ = todo
             gid' `shouldBe` 0
             todo `shouldSatisfy` has _TodoAction
             age `shouldBe` Age1
@@ -146,18 +143,18 @@ main = hspec $ do
             pid `shouldBe` "bob"
             length cards `shouldBe` 7
             messages `shouldBe` []
-        let (res4, msgs4) = runHubE $ do
-                InGame _ _ (TodoAction _ _ _ cardsBob) _ <- return (playerStatus hs3 "bob")
-                InGame _ _ (TodoAction _ _ _ cardsGarry) _ <- return (playerStatus hs3 "garry")
-                InGame _ _ (TodoAction _ _ _ cardsJohn) _ <- return (playerStatus hs3 "john")
-                hsa <- playAction (PlayerAction Drop (head cardsBob)) mempty hs3 0 "bob"
-                hsb <- playAction (PlayerAction Drop (head cardsGarry)) mempty hsa 0 "garry"
-                hsc <- playAction (PlayerAction Drop (head cardsJohn)) mempty hsb 0 "john"
-                return hsc
-            Right hs4 = res4
+        let res4 = runHubE a4 hs3
+            a4 = do
+                InGame _ _ (TodoAction _ _ _ cardsBob _) _ <- return (playerStatus hs3 "bob")
+                InGame _ _ (TodoAction _ _ _ cardsGarry _) _ <- return (playerStatus hs3 "garry")
+                InGame _ _ (TodoAction _ _ _ cardsJohn _) _ <- return (playerStatus hs3 "john")
+                playAction (PlayerAction Drop (head cardsBob ^. _1)) mempty 0 "bob"
+                playAction (PlayerAction Drop (head cardsGarry ^. _1)) mempty 0 "garry"
+                playAction (PlayerAction Drop (head cardsJohn ^. _1)) mempty 0 "john"
+            Right (_, hs4, _) = res4
         it "Should be possible to play" $ do
             let InGame gid' _ todo messages = playerStatus hs4 "bob"
-                TodoAction age turn pid cards = todo
+                TodoAction age turn pid cards _ = todo
             gid' `shouldBe` 0
             todo `shouldSatisfy` has _TodoAction
             age `shouldBe` Age1
