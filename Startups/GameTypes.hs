@@ -145,7 +145,13 @@ instance PrettyE PlayerAction where
 $(deriveBoth baseOptions ''PlayerState)
 $(deriveBoth baseOptions ''PlayerAction)
 $(deriveBoth baseOptions ''ActionType)
-$(deriveBoth baseOptions ''SpecialInformation)
+$(deriveElmDef baseOptions ''SpecialInformation)
+
+instance ToJSON SpecialInformation where
+  toJSON UseOpportunity = String "UseOpportunity"
+
+instance FromJSON SpecialInformation where
+  parseJSON = withText "SpecialInformation" $ \t -> UseOpportunity <$ guard (t == "UseOpportunity")
 
 instance ToJSON GameState where
     toJSON (GameState pm dp _) = object [ "playermap" .= pm
