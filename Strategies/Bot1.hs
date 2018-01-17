@@ -77,7 +77,7 @@ bot1 mkPromise = Strategy pd ac
                     priofunc <- priority age
                     let s = priofunc act exch special pid stt
                     r <- s ^.. folded
-                    return (r, (act, exch))
+                    return (r, (act, exch, special))
             in  return $ mkPromise $ snd $ head a
 
 

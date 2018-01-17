@@ -52,7 +52,7 @@ data PlayerInput = NumericChoice Int
 data IAskingAction   = IAskingAction PlayerId Age (NonEmpty Card) GameState Turn
 data IAskingCard     = IAskingCard   PlayerId Age (NonEmpty Card) GameState Message
 
-data IAsk = AskingAction   IAskingAction  (PubFPM (PlayerAction, Exchange))
+data IAsk = AskingAction   IAskingAction  (PubFPM (PlayerAction, Exchange, Maybe SpecialInformation))
           | AskingCard     IAskingCard    (PubFPM Card)
 
 $(deriveToJSON baseOptions ''IAskingAction)
@@ -101,7 +101,8 @@ data VOutput = SpawnGame GameId [PlayerId]
              | TellPlayer PlayerId Message
              | Broadcast Message
              | FailAsk Message IAsk -- used when the player is not in the proper state
-             | SucceedAskingAction (PlayerAction, Exchange) (PubFPM (PlayerAction, Exchange))
+             | SucceedAskingAction (PlayerAction, Exchange, Maybe SpecialInformation)
+                                   (PubFPM (PlayerAction, Exchange, Maybe SpecialInformation))
              | SucceedAskingCard   Card                     (PubFPM Card)
              | OCustom T.Text -- ^ Custom backend communication
 
@@ -225,7 +226,6 @@ hub = asPipe (loop h)
                         notifySuccess a gs necards (`SucceedAskingCard` pub)
                     Just a@(AskingAction (IAskingAction _ age necards gs _) pub) -> do
                         let allowable = allowableActions age pid necards (gs ^. playermap)
-                                            & traverse %~ (\(x,y,_) -> (x,y))
                         notifySuccess a gs allowable (`SucceedAskingAction` pub)
             -- Go is only acceptable when the player is in Joined state
             Go -> let hgid gameid = do

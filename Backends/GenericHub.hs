@@ -64,18 +64,18 @@ data GP = GP { _gpPlayers  :: M.Map PlayerId PlayerMessages
              , _gpMaxprom  :: PromiseId
              , _gpBlocking :: BlockingOn
              , _gpCardProm :: M.Map (Promise Card) Card
-             , _gpActProm  :: M.Map (Promise (PlayerAction, Exchange)) (PlayerAction, Exchange)
+             , _gpActProm  :: M.Map (Promise (PlayerAction, Exchange, Maybe SpecialInformation)) (PlayerAction, Exchange, Maybe SpecialInformation)
              , _gpGS       :: GameState
              }
 
 data BlockingOn = NotBlocked
                 | BlockingOnCard   GameState (Promise Card)                     (Card -> GameMonad Promise GameResult)
-                | BlockingOnAction GameState (Promise (PlayerAction, Exchange)) ((PlayerAction, Exchange) -> GameMonad Promise GameResult)
+                | BlockingOnAction GameState (Promise (PlayerAction, Exchange, Maybe SpecialInformation)) ((PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad Promise GameResult)
 
 data AP = AP Age Turn PlayerId (NonEmpty Card) GameState
 data AC = AC Age PlayerId (NonEmpty Card) GameState Message
 
-data Com = CAP AP (Promise (PlayerAction, Exchange))
+data Com = CAP AP (Promise (PlayerAction, Exchange, Maybe SpecialInformation))
          | CAC AC (Promise Card)
 
 data PlayerMessages = PlayerMessages { _curBlocking :: Maybe Com
@@ -251,8 +251,8 @@ toggleReady gid pid = do
 playCard :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => Card -> GameId -> PlayerId -> m ()
 playCard = genPlay _BlockingOnCard gpCardProm (_CAC . _2)
 
-playAction :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerAction -> Exchange -> GameId -> PlayerId -> m ()
-playAction pa e = genPlay _BlockingOnAction gpActProm (_CAP . _2) (pa, e)
+playAction :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerAction -> Exchange -> Maybe SpecialInformation -> GameId -> PlayerId -> m ()
+playAction pa e mspecial = genPlay _BlockingOnAction gpActProm (_CAP . _2) (pa, e, mspecial)
 
 genPlay :: (MonadError PlayerError m, HubMonad m, MonadState HubState m)
         => Prism' BlockingOn (GameState, Promise toplay, toplay -> GameMonad Promise GameResult)
@@ -287,7 +287,7 @@ advanceGame gid gp gs act = do
                  GPA gp' gs' prom a -> GamePlaying (gp' & gpBlocking .~ BlockingOnAction gs' prom a)
                  GPC gp' gs' prom a -> GamePlaying (gp' & gpBlocking .~ BlockingOnCard gs' prom a)
 
-data StepResult a = GPA GP GameState (Promise (PlayerAction, Exchange)) ((PlayerAction, Exchange) -> GameMonad Promise a)
+data StepResult a = GPA GP GameState (Promise (PlayerAction, Exchange, Maybe SpecialInformation)) ((PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad Promise a)
                   | GPC GP GameState (Promise Card) (Card -> GameMonad Promise a)
                   | Fin a
                   | Failed Message

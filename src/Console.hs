@@ -35,8 +35,7 @@ playerStrat = Strategy pd ac
             print (PP.pretty (playerActionsDialog pid pm necards x))
             r <- readNumber
             if r >= 0 && r < NE.length x
-                then let (pa,e,_) = x NE.!! r
-                     in  return (return (pa, e))
+                then return (return (x NE.!! r))
                 else pd age turn pid necards stt
         ac turn pid necards stt m = do
             let cards = _NonEmpty # necards

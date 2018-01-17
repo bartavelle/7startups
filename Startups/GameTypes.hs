@@ -83,13 +83,13 @@ data CommunicationType = PlayerCom PlayerId Communication
                        | BroadcastCom Communication
 
 data Communication = RawMessage PrettyDoc
-                   | ActionRecapMsg Age Turn GameState (M.Map PlayerId (PlayerAction, Exchange))
+                   | ActionRecapMsg Age Turn GameState (M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation))
 
 data GameInstr p a where
-    PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange))
+    PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange, Maybe SpecialInformation))
     AskCard        :: Age -> PlayerId -> NonEmpty Card -> Message -> GameInstr p (p Card)
     GetPromiseCard :: p Card -> GameInstr p Card
-    GetPromiseAct  :: p (PlayerAction, Exchange) -> GameInstr p (PlayerAction, Exchange)
+    GetPromiseAct  :: p (PlayerAction, Exchange, Maybe SpecialInformation) -> GameInstr p (PlayerAction, Exchange, Maybe SpecialInformation)
     Message        :: CommunicationType -> GameInstr p ()
     ThrowError     :: Message -> GameInstr p a -- ^ Used for the error instance
     CatchError     :: GameMonad p a -> (Message -> GameMonad p a) -> GameInstr p a
@@ -97,7 +97,7 @@ data GameInstr p a where
 type GameMonad p = ProgramT (GameInstr p) (State GameState)
 
 -- | Ask the player which card he would like to play.
-playerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameMonad p (p (PlayerAction, Exchange))
+playerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameMonad p (p (PlayerAction, Exchange, Maybe SpecialInformation))
 playerDecision a t p c = singleton (PlayerDecision a t p c)
 
 -- | Tell some information to a specific player
@@ -113,11 +113,11 @@ getPromiseCard :: p Card -> GameMonad p Card
 getPromiseCard = singleton . GetPromiseCard
 
 -- | Awaits an "action" promise
-getPromiseAction :: p (PlayerAction, Exchange) -> GameMonad p (PlayerAction, Exchange)
+getPromiseAction :: p (PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad p (PlayerAction, Exchange, Maybe SpecialInformation)
 getPromiseAction = singleton . GetPromiseAct
 
 -- | Gives a quick rundown of all actions
-actionRecap :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange) -> GameMonad p ()
+actionRecap :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad p ()
 actionRecap age turn mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg age turn s mm
 
 instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where

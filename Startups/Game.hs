@@ -116,15 +116,21 @@ resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' (ge
 
 -- | Try to play a card, with some extra resources, provided that the
 -- player has enough.
-playCard :: NonInteractive m => Age -> PlayerId -> MS.MultiSet Resource -> Card -> m ()
-playCard age pid extraResources card = do
+playCard :: NonInteractive m
+         => Age
+         -> PlayerId
+         -> MS.MultiSet Resource
+         -> Bool -- ^ use opportunity
+         -> Card
+         -> m ()
+playCard age pid extraResources useOpportunity card = do
     -- compute available resources
     playerState <- getPlayerState pid
     -- remove the chosen card from the card list, and remove the money from
     -- the player account
     let Cost _ fundCost = card ^. cCost
     let -- this tests whether a player has the opportunity capability ready
-        hasOpportunity = has (cardEffects . _Opportunity . ix age) playerState && has cType card
+        hasOpportunity = has (cardEffects . _Opportunity . ix age) playerState && has cType card && useOpportunity
         -- checks if a player has enough resources to play a card
         enoughResources = fundCost <= playerState ^. pFunds && isAffordable playerState extraResources card
         -- checks if a card is free (owns another card that permits free
@@ -134,9 +140,9 @@ playCard age pid extraResources card = do
                      Nothing -> False
         -- checks if a player can build a given card. This is in the 'let'
         -- part to take advantage of guards.
-        checkPrice | enoughResources = playermap . ix pid . pFunds -= fundCost
-                   | isFree = return ()
+        checkPrice | isFree = return ()
                    | hasOpportunity = playermap . ix pid . cardEffects . _Opportunity . at age .= Nothing
+                   | enoughResources = playermap . ix pid . pFunds -= fundCost
                    | otherwise = throwError (showPlayerId pid <+> "tried to play a card he did not have the resources for.")
     checkPrice
     -- add the card to the player hand
@@ -152,8 +158,8 @@ playCard age pid extraResources card = do
 --
 -- The reason it is done that way is that card payouts must be computed
 -- after all other actions have been performed.
-resolveAction :: NonInteractive m => Age -> PlayerId -> ([Card], (PlayerAction, Exchange)) -> m ([Card], AddMap PlayerId Funding, Maybe Card)
-resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
+resolveAction :: NonInteractive m => Age -> PlayerId -> ([Card], (PlayerAction, Exchange, Maybe SpecialInformation)) -> m ([Card], AddMap PlayerId Funding, Maybe Card)
+resolveAction age pid (hand, (PlayerAction actiontype card, exch, mspecial)) = do
     -- check that the player didn't cheat
     unless (card `elem` hand) (throwError (showPlayerId pid <+> "tried to play a card that was not in his hand:" <+> shortCard card))
     -- resolve the exchanges
@@ -162,7 +168,7 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
     let newhand = filter (/= card) hand
     (cardp, extrapay) <- case actiontype of
         Drop -> discardpile %= (card :) >> return (Nothing, 3)
-        Play -> playCard age pid extraResources card >> return (Just card, 0)
+        Play -> (Just card, 0) <$ playCard age pid extraResources (mspecial == Just UseOpportunity) card
         BuildCompany -> do
             stt <- getPlayerState pid
             let profile   = stt ^. pCompany
@@ -172,7 +178,7 @@ resolveAction age pid (hand, (PlayerAction actiontype card, exch)) = do
                 ccard     = getResourceCard profile nextstage
             when (curstage == maxstage) (throwError (showPlayerId pid <+> "tried to increase the company stage beyond the limit."))
             playermap . ix pid . pCompanyStage %= succ
-            playCard age pid extraResources ccard
+            playCard age pid extraResources False ccard -- can't use opportunity to build company cards
             return (Just ccard, 0)
     return (newhand, payout <> AddMap (M.singleton pid extrapay), cardp)
 

@@ -90,8 +90,8 @@ quicksituation age turn stt = hdr </> situationRecap stt
     where
         hdr = "Age" <+> pe age <+> ", turn" <+> numerical turn
 
-displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange) -> PrettyDoc
-displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Public pid pmap (pa, exch, Nothing) | (pid, (pa, exch)) <- M.toList actionmap ]
+displayActions :: M.Map PlayerId PlayerState -> M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation) -> PrettyDoc
+displayActions pmap actionmap = vcat [ showPlayerId pid <+> playerActionDesc Public pid pmap fullAction | (pid, fullAction) <- M.toList actionmap ]
 
 displayVictory :: M.Map PlayerId (M.Map VictoryType VictoryPoint) -> PrettyDoc
 displayVictory = vcat . map displayLine . itoList

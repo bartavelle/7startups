@@ -11,7 +11,7 @@ import Control.Monad.Operational
 import Control.Monad.State.Strict
 import Data.List.NonEmpty
 
-data Strategy p m = Strategy { _doPlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameState -> m (p (PlayerAction, Exchange))
+data Strategy p m = Strategy { _doPlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameState -> m (p (PlayerAction, Exchange, Maybe SpecialInformation))
                              , _doAskCard        :: Age -> PlayerId -> NonEmpty Card -> GameState -> Message -> m (p Card)
                              }
 
@@ -21,7 +21,7 @@ data OperationDict p m = OperationDict { _strat        :: Strategy p m
                                        }
 
 data OperationDict' p m = OperationDict' { _strat'           :: Strategy p m
-                                         , _doGetPromiseAct  :: p (PlayerAction, Exchange) -> m (Either Message (PlayerAction, Exchange))
+                                         , _doGetPromiseAct  :: p (PlayerAction, Exchange, Maybe SpecialInformation) -> m (Either Message (PlayerAction, Exchange, Maybe SpecialInformation))
                                          , _doGetPromiseCard :: p Card -> m (Either Message Card)
                                          , _doMessage'       :: GameState -> CommunicationType -> m ()
                                          }

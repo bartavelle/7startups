@@ -22,9 +22,8 @@ import System.Random
 import Test.QuickCheck
 import Data.Monoid
 import Control.Monad
-import Control.Monad.Writer
-import Control.Monad.Trans.Except
 import Data.Maybe (fromJust)
+import Data.List.NonEmpty (NonEmpty(..))
 
 getCard :: T.Text -> Card
 getCard n = case filter (\c -> c ^? cName == Just n) allcards of
@@ -81,6 +80,25 @@ main = hspec $ do
                 expected = S.fromList (map getResCost reslist)
                 actual = S.fromList $ availableResources OwnRes (fromJust (testState ^? playermap . ix pid))
             in  it ("Is correct for " <> T.unpack pid) $ actual `shouldBe` expected
+    describe "Opportunity" $ do
+      let cny = CompanyProfile Yahoo A
+          heldCards = map (getResourceCard cny) [Project .. Stage3]
+          p1s = PlayerState cny Stage3 heldCards 10 ("p3","p2") []
+          p2s = p1s & pNeighborhood .~ ("p1","p3")
+          p3s = p1s & pNeighborhood .~ ("p2","p1")
+          market = getCard "Marketroid"
+          lavish = getCard "Lavish Headquarters"
+          devops = getCard "Devops Team"
+          pmap = M.fromList (zip ["p1","p2","p3"] [p1s,p2s,p3s])
+      it "Should only give the option to play marketroid in the first test" $
+        allowableActions Age1 "p1" (market :| []) pmap `shouldBe`
+             (PlayerAction Play market, mempty, Nothing) :| [ (PlayerAction Drop market, mempty, Nothing) ]
+      it "Should only give the option to play the lavish headquarters with opportunity" $
+        allowableActions Age1 "p1" (lavish :| []) pmap `shouldBe`
+             (PlayerAction Play lavish, mempty, Just UseOpportunity) :| [ (PlayerAction Drop lavish, mempty, Nothing) ]
+      it "Should only give the option to play the devops team with or without cost" $
+        allowableActions Age1 "p1" (devops :| []) pmap `shouldBe`
+             (PlayerAction Play devops, mempty, Nothing) :| [ (PlayerAction Play devops, mempty, Just UseOpportunity), (PlayerAction Drop devops, mempty, Nothing) ]
     describe "random games" $ do
         let gs = do
                 seed <- arbitrary
@@ -148,9 +166,9 @@ main = hspec $ do
                 InGame _ _ (TodoAction _ _ _ cardsBob _) _ <- return (playerStatus hs3 "bob")
                 InGame _ _ (TodoAction _ _ _ cardsGarry _) _ <- return (playerStatus hs3 "garry")
                 InGame _ _ (TodoAction _ _ _ cardsJohn _) _ <- return (playerStatus hs3 "john")
-                playAction (PlayerAction Drop (head cardsBob ^. _1)) mempty 0 "bob"
-                playAction (PlayerAction Drop (head cardsGarry ^. _1)) mempty 0 "garry"
-                playAction (PlayerAction Drop (head cardsJohn ^. _1)) mempty 0 "john"
+                playAction (PlayerAction Drop (head cardsBob ^. _1)) mempty Nothing 0 "bob"
+                playAction (PlayerAction Drop (head cardsGarry ^. _1)) mempty Nothing 0 "garry"
+                playAction (PlayerAction Drop (head cardsJohn ^. _1)) mempty Nothing 0 "john"
             Right (_, hs4, _) = res4
         it "Should be possible to play" $ do
             let InGame gid' _ todo messages = playerStatus hs4 "bob"
