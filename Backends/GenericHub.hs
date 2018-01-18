@@ -194,6 +194,9 @@ playerStatus (HubState hs) pid =
 newGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> m GameId
 newGame pid = do
     HubState hs <- get
+    case playerGame (HubState hs) pid of
+        Nothing -> return ()
+        Just _ -> throwError AlreadyPlaying
     let gid = maybe 0 (succ . fst . fst) (M.maxViewWithKey hs)
     tellEvent gid GameCreated
     _Wrapped' . at gid ?= GameJoining (M.singleton pid Joined)
