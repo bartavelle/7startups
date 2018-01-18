@@ -21,6 +21,7 @@ module Backends.GenericHub
     , playerStatus
     , newGame
     , joinGame
+    , leaveGame
     , toggleReady
     , playCard
     , playAction
@@ -216,6 +217,16 @@ joinGame pid gid = do
             tellEvent gid (PlayerJoinedGame pid)
             _Wrapped' . ix gid . _GameJoining . at pid ?= Joined
             checkGameStart gid
+
+leaveGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> m ()
+leaveGame pid = do
+  nhs <- get
+  case playerGame nhs pid of
+      Nothing -> return ()
+      Just (gid, Joining _) -> do
+        tellEvent gid (PlayerLeftGame pid)
+        _Wrapped' . ix gid . _GameJoining . at pid .= Nothing
+      Just _ -> throwError AlreadyPlaying
 
 checkGameStart :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> m Bool
 checkGameStart gid = do

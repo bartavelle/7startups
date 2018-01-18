@@ -86,6 +86,7 @@ data PlayerError = AlreadyPlaying
                  deriving (Show, Eq, Read, Enum, Ord, Bounded)
 
 data GameEvent = PlayerJoinedGame PlayerId
+               | PlayerLeftGame PlayerId
                | GameCreated
                | GameStarted [PlayerId]
                | PlayerMustPlay PlayerId
