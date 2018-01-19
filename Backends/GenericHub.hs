@@ -218,12 +218,13 @@ joinGame pid gid = do
             _Wrapped' . ix gid . _GameJoining . at pid ?= Joined
             checkGameStart gid
 
-leaveGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> m ()
-leaveGame pid = do
+leaveGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => PlayerId -> GameId -> m ()
+leaveGame pid gid = do
   nhs <- get
   case playerGame nhs pid of
       Nothing -> return ()
-      Just (gid, Joining _) -> do
+      Just (gid', Joining _) -> do
+        unless (gid == gid') (throwError PlayerNotInGame)
         tellEvent gid (PlayerLeftGame pid)
         _Wrapped' . ix gid . _GameJoining . at pid .= Nothing
       Just _ -> throwError AlreadyPlaying
