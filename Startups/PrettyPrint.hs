@@ -240,7 +240,7 @@ instance PP.Pretty PrettyDoc where
         PVictory vp                -> PP.pretty $ numerical vp
         PPlayerCount pc            -> PP.pretty $ numerical pc
         PTurn t                    -> PP.pretty $ numerical t
-        PResource Youthfulness     -> PP.cyan       "Y"
+        PResource Hype             -> PP.cyan       "H"
         PResource Adoption         -> PP.dullwhite  "A"
         PResource Vision           -> PP.magenta    "V"
         PResource Development      -> PP.dullyellow "D"

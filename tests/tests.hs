@@ -43,23 +43,23 @@ testState = GameState (M.fromList players) [] (mkStdGen 5)
         pam  = PlayerState ppam Project pamcards 3 ("poum", "pim") []
         poum = PlayerState ppoum Project poumcards 6 ("bob", "pam") []
         bob  = PlayerState pbob Project bobcards 5 ("pim", "poum") []
-        pimcards = map (getResourceCard ppim) [Project .. Stage1] <> map getCard [ "Cloud Servers"
+        pimcards = map (getResourceCard ppim) [Project .. Stage1] <> map getCard [ "Private Cloud"
                                                                                  , "Marketroid"
-                                                                                 , "Company Nerf Battles"
+                                                                                 , "Internet Legend"
                                                                                  ]
         pamcards = map (getResourceCard ppam) [Project] <> map getCard [ "High Speed Internet"
-                                                                       , "Free Food"
-                                                                       , "Enterprise Programmer"
-                                                                       , "Rock Star Evangelist"
+                                                                       , "Artisan Chef"
+                                                                       , "Brogrammer"
+                                                                       , "Benevolent Dictator"
                                                                        ]
         poumcards = map (getResourceCard ppoum) [Project .. Stage1] <> map getCard [ "Garage"
                                                                                    , "Business Angel"
-                                                                                   , "Admin Network"
+                                                                                   , "Segmented Network"
                                                                                    ]
         bobcards = map (getResourceCard pbob) [Project] <> map getCard [ "Accountant"
-                                                                       , "Operations Guru"
-                                                                       , "Financial Developer"
-                                                                       , "Standing Desks"
+                                                                       , "Commercial Engineer"
+                                                                       , "High Frequency Trader"
+                                                                       , "Fußball"
                                                                        ]
 
 main :: IO ()
@@ -75,7 +75,7 @@ main = hspec $ do
             cardsCount    age nbplayers = length (filter (\c -> c ^? cAge == Just age && c ^? cMinplayers <= Just nbplayers) allcards)
         mapM_ (uncurry nbc) [ (age, nbp) | age <- [Age1,Age2,Age3], nbp <- [3 .. 7] ]
     describe "availableResources" $
-        forM_ [("pam", ["AVD$$$"]), ("pim", ["YMF$"]), ("poum", ["D$$$$$$"]), ("bob", ["YF$$$$$DM", "YF$$$$$FO", "YF$$$$$DO", "YF$$$$$FM"])] $ \(pid, reslist) ->
+        forM_ [("pam", ["AVD$$$"]), ("pim", ["HMF$"]), ("poum", ["D$$$$$$"]), ("bob", ["HF$$$$$DM", "HF$$$$$FO", "HF$$$$$DO", "HF$$$$$FM"])] $ \(pid, reslist) ->
             let getResCost (Cost rescost _) = rescost
                 expected = S.fromList (map getResCost reslist)
                 actual = S.fromList $ availableResources OwnRes (fromJust (testState ^? playermap . ix pid))

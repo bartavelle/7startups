@@ -35,20 +35,20 @@ data CompanySide = A | B
 data CompanyProfile = CompanyProfile Company CompanySide
                     deriving (Eq, Ord, Show)
 
-data Resource = Youthfulness -- ^ Glass
-              | Vision       -- ^ Papyrus
-              | Adoption     -- ^ Fabric
-              | Development  -- ^ Clay
-              | Operations   -- ^ Stone
-              | Marketing    -- ^ Wood
-              | Finance      -- ^ Ore
+data Resource = Hype        -- ^ Glass
+              | Vision      -- ^ Papyrus
+              | Adoption    -- ^ Fabric
+              | Development -- ^ Clay
+              | Operations  -- ^ Stone
+              | Marketing   -- ^ Wood
+              | Finance     -- ^ Ore
               deriving (Ord, Eq, Show, Enum, Bounded)
 
 baseResources :: S.Set Resource
 baseResources = S.fromList [Development, Operations, Marketing, Finance]
 
 advancedResources :: S.Set Resource
-advancedResources = S.fromList [Adoption, Vision, Youthfulness]
+advancedResources = S.fromList [Adoption, Vision, Hype]
 
 newtype Poacher = Poacher { getPoacher :: Integer }
     deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)

@@ -83,7 +83,7 @@ instance Monoid Cost where
 instance IsString Cost where
     fromString = F.foldMap toCost
         where
-            toCost 'Y' = Cost (MS.singleton Youthfulness) 0
+            toCost 'H' = Cost (MS.singleton Hype) 0
             toCost 'V' = Cost (MS.singleton Vision) 0
             toCost 'A' = Cost (MS.singleton Adoption) 0
             toCost 'D' = Cost (MS.singleton Development) 0
