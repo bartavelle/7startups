@@ -203,7 +203,7 @@ resolvePoaching age plyrs =
 --
 -- Not that all cards effects are revealed simultaneously, and all cards
 -- that let player gain money must be played after all cards are played.
-playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
+playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card], [PlayerId])
 playTurn age turn rawcardmap = do
     stt <- use id
     -- compute the list of players that are playing this turn. Only players
@@ -217,7 +217,7 @@ playTurn age turn rawcardmap = do
     -- first gather all decisions promises
     pdecisions <- ifor cardmap $ \pid crds -> (crds,) <$> (convertCards crds >>= playerDecision age turn pid)
     -- then await on all promised
-    decisions <- traverse (\(crds,p) -> (,) <$> pure crds <*> getPromiseAction p) pdecisions
+    decisions <- traverse (\(crds,p) -> (crds,) <$> getPromiseAction p) pdecisions
     results <- itraverse (resolveAction age) decisions
     -- first add the money gained from exchanges
     ifor_ (results ^. traverse . _2) $ \pid payout ->
@@ -229,22 +229,8 @@ playTurn age turn rawcardmap = do
             playermap . ix pid . pFunds += f
         return hand
     actionRecap age turn (fmap snd decisions)
-    -- check for recycling
-    -- Note that it is buggy : when played at the end of an age, it should
-    -- give access to all the discarded cards. Now that it's resolved here,
-    -- it can't.
     let recyclers = M.keys $ M.filter (has (_3 . _Just . cEffect . traverse . _Recycling)) results
-    forM_ recyclers $ \recycler -> do
-        curstate <- use id
-        case curstate ^? discardpile . _NonEmpty of
-            Just nedp -> do
-                generalMessage (showPlayerId recycler <+> "is going to use his recycle ability.")
-                card <- askCardSafe age recycler nedp "Choose a card to recycle (play for free)"
-                generalMessage (showPlayerId recycler <+> "recycled" <+> shortCard card)
-                playermap . ix recycler . pCards %= (card :)
-                discardpile %= filter (/= card)
-            Nothing -> tellPlayer recycler (emph "The discard pile was empty, you can't recycle.")
-    return o
+    return (o, recyclers)
 
 -- | Rotates the player hands, at the end of each turn.
 rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
@@ -259,20 +245,40 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
                         then NLeft
                         else NRight
 
+handleRecycle :: Age -> PlayerId -> GameMonad p ()
+handleRecycle age recycler = do
+  curstate <- use id
+  case curstate ^? discardpile . _NonEmpty of
+      Just nedp -> do
+          generalMessage (showPlayerId recycler <+> "is going to use his recycle ability.")
+          card <- askCardSafe age recycler nedp "Choose a card to recycle (play for free)"
+          generalMessage (showPlayerId recycler <+> "recycled" <+> shortCard card)
+          playermap . ix recycler . pCards %= (card :)
+          discardpile %= filter (/= card)
+      Nothing -> tellPlayer recycler (emph "The discard pile was empty, you can't recycle.")
+
 -- | Play a whole age
 playAge :: Age -> GameMonad p ()
 playAge age = do
     cards <- dealCards age
     let turnPlay crds turn = do
-            ncrds <- playTurn age turn crds
-            -- The 7th turn is a hack for the efficiency capacity. In that
-            -- case, the hands should not be rotated as the rules stipulate
-            -- that the player can play the two cards he has in hands.
+            (ncrds, recyclers) <- playTurn age turn crds
             if turn == 6
-                then return ncrds
-                else rotateHands age ncrds
-    remaining <- foldM turnPlay cards [1 .. 7]
-    discardpile <>= toListOf (traverse . traverse) remaining
+              then do
+                -- on the last turn, we play turn 7, which is a hack for
+                -- players with the efficiency capacity
+                (remaining, recyclers') <- playTurn age 7 ncrds
+                -- all remaining cards are added to the discard pile
+                let discarded = toListOf (traverse . traverse) (remaining <> ncrds)
+                discardpile <>= discarded
+                -- all players that activated the recycle ability on turn
+                -- 6 or 7 recycle now, after hands have been put to the bin
+                mapM_ (handleRecycle age) (recyclers <> recyclers')
+                return mempty
+              else do
+                mapM_ (handleRecycle age) recyclers
+                rotateHands age ncrds
+    foldM_ turnPlay cards [1 .. 6]
     -- resolve the "military" part
     let displayPoaching (pid, tokens) = showPlayerId pid <+> "received the following poaching tokens" <+> foldPretty tokens
     poachingTokens <- resolvePoaching age <$> use playermap
