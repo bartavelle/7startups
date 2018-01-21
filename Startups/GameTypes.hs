@@ -34,7 +34,7 @@ showPlayerId = emph . pe
 data GameState = GameState { _playermap   :: M.Map PlayerId PlayerState
                            , _discardpile :: [Card]
                            , _rnd         :: StdGen
-                           }
+                           } deriving Show
 
 type Neighborhood = (PlayerId, PlayerId)
 
@@ -44,7 +44,7 @@ data PlayerState = PlayerState { _pCompany         :: CompanyProfile
                                , _pFunds           :: Funding
                                , _pNeighborhood    :: Neighborhood
                                , _pPoachingResults :: [PoachingOutcome]
-                               }
+                               } deriving Show
 
 makeLenses ''GameState
 makeLenses ''PlayerState
@@ -81,9 +81,19 @@ type GameStateOnly m = (MonadState GameState m, Functor m, Applicative m)
 
 data CommunicationType = PlayerCom PlayerId Communication
                        | BroadcastCom Communication
+                       deriving Show
+
+data ActionRecap
+  = ActionRecap
+  { _arAge     :: Age
+  , _arTurn    :: Turn
+  , _arPlayers :: M.Map PlayerId PlayerState
+  , _arActions :: M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation)
+  } deriving Show
 
 data Communication = RawMessage PrettyDoc
-                   | ActionRecapMsg Age Turn GameState (M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation))
+                   | ActionRecapMsg ActionRecap
+                   deriving Show
 
 data GameInstr p a where
     PlayerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameInstr p (p (PlayerAction, Exchange, Maybe SpecialInformation))
@@ -118,7 +128,7 @@ getPromiseAction = singleton . GetPromiseAct
 
 -- | Gives a quick rundown of all actions
 actionRecap :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad p ()
-actionRecap age turn mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg age turn s mm
+actionRecap age turn mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg (ActionRecap age turn (s ^. playermap) mm)
 
 instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where
     throwError = singleton . ThrowError
@@ -145,6 +155,7 @@ instance PrettyE PlayerAction where
 $(deriveBoth baseOptions ''PlayerState)
 $(deriveBoth baseOptions ''PlayerAction)
 $(deriveBoth baseOptions ''ActionType)
+$(deriveBoth baseOptions ''ActionRecap)
 $(deriveElmDef baseOptions ''SpecialInformation)
 
 instance ToJSON SpecialInformation where

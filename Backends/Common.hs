@@ -101,9 +101,9 @@ displayVictory = vcat . map displayLine . itoList
 
 displayCommunication :: Communication -> PrettyDoc
 displayCommunication (RawMessage d) = d
-displayCommunication (ActionRecapMsg age turn gs mp) =   displayActions pmap mp
-                                                     </> quicksituation age turn pmap
-    where pmap = gs ^. playermap
+displayCommunication (ActionRecapMsg (ActionRecap age turn pmap mp))
+  =   displayActions pmap mp
+  </> quicksituation age turn pmap
 
 playerStartup :: CompanyProfile -> CompanyStage -> PrettyDoc
 playerStartup cp cs = vcat $ map genStage [Project .. getMaxStage cp]

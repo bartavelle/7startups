@@ -86,6 +86,7 @@ data PlayerMessages = PlayerMessages { _curBlocking :: Maybe Com
 class Monad m => HubMonad m where
     getRand :: m StdGen
     tellEvent :: GameId -> GameEvent -> m ()
+    gamelog :: ActionRecap -> m ()
 
 defPlayerMessages :: PlayerMessages
 defPlayerMessages = PlayerMessages Nothing []
@@ -99,13 +100,13 @@ makeWrapped ''HubState
 
 type GTrav x = Traversal' (M.Map GameId GameS) x
 
-newtype PureHub time a = PureHub { getPureHub :: RSST (time, StdGen) ([(time, GameId, GameEvent)]) HubState (Except PlayerError) a }
+newtype PureHub time a = PureHub { getPureHub :: RSST (time, StdGen) ([(time, GameId, GameEvent)], [ActionRecap]) HubState (Except PlayerError) a }
                          deriving (Functor, Applicative, Monad)
 
-runPureHub :: PureHub time a -> time -> StdGen -> HubState -> Either PlayerError (a, HubState, [(time, GameId, GameEvent)])
+runPureHub :: PureHub time a -> time -> StdGen -> HubState -> Either PlayerError (a, HubState, ([(time, GameId, GameEvent)], [ActionRecap]))
 runPureHub a time stdgen hs = runExcept (runRSST (getPureHub a) (time, stdgen) hs)
 
-instance MonadWriter [(time, GameId, GameEvent)] (PureHub time) where
+instance MonadWriter ([(time, GameId, GameEvent)], [ActionRecap]) (PureHub time) where
   tell = PureHub . tell
   listen = PureHub . listen . getPureHub
   pass = PureHub . pass . getPureHub
@@ -123,9 +124,10 @@ instance MonadError PlayerError (PureHub time) where
 
 instance HubMonad (PureHub time) where
   getRand = asks snd
+  gamelog ar = tell (mempty, [ar])
   tellEvent gid event = do
     now <- asks fst
-    tell [(now,gid,event)]
+    tell ([(now,gid,event)], mempty)
 
 
 zoomHub :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
@@ -347,6 +349,7 @@ step gid initialgp gs act = case r of
                                    BroadcastCom (RawMessage msg) -> do
                                        tellEvent gid (BCom msg)
                                        return $ gp & gpPlayers . traverse . playerLog %~ (msg :)
+                                   BroadcastCom (ActionRecapMsg recap) -> gp <$ gamelog recap
                                    _ -> return gp
                         step gid gp' gs' (f ())
                     ThrowError err -> return $ Failed err
