@@ -110,12 +110,12 @@ main = hspec $ do
 
     describe "Hub" $ do
         let mhs = initialHubstate
-            runHubE :: PureHub () a -> HubState -> Either PlayerError (a, HubState, ([((), GameId, GameEvent)], [ActionRecap]))
+            runHubE :: PureHub () a -> HubState -> Either PlayerError (a, HubState, [((), GameId, GameEvent)])
             runHubE a hs = runPureHub a () (mkStdGen 42) hs
             runHub :: PureHub () a -> (a, HubState, [((), GameId, GameEvent)])
             runHub a = case runHubE a mhs of
                          Left rr -> error (show rr)
-                         Right (x, hs, (l, _)) -> (x, hs, l)
+                         Right x -> x
             shouldGiveError act hs err = case runHubE act hs of
                                           Left rr -> rr `shouldBe` err
                                           _ -> fail "Should have failed"
@@ -127,7 +127,7 @@ main = hspec $ do
             msgs `shouldBe` [((), 0,GameCreated)]
             games hs1 `shouldBe` M.singleton 0 (Joining (M.singleton "bob" Joined))
         let res = runHubE (joinGame "garry" 0 >> joinGame "john" 0) hs1
-            Right (_, hs2, (msgs2, _)) = res
+            Right (_, hs2, msgs2) = res
         it "Should register other players" $ do
             case res of
                 Left rr -> fail (show rr)
@@ -138,7 +138,7 @@ main = hspec $ do
             a = toggleReady 0 "bob"
              >> toggleReady 0 "garry"
              >> toggleReady 0 "john"
-            Right (_, hs3, (msgs3, _)) = res3
+            Right (_, hs3, msgs3) = res3
         it "Should toggle status until game starts" $ do
             case res3 of
               Left rr -> fail (show rr)

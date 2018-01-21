@@ -58,7 +58,7 @@ newtype Promise x = Promise { _getPromise :: PromiseId }
 newtype HubState = HubState { getHubState :: M.Map GameId GameS }
 
 data GameS = GameJoining (M.Map PlayerId PlayerJoining)
-           | GameOver (Either Message GameResult)
+           | GameOver (Either Message GameResult) [ActionRecap]
            | GamePlaying GP
 
 data GP = GP { _gpPlayers  :: M.Map PlayerId PlayerMessages
@@ -67,6 +67,7 @@ data GP = GP { _gpPlayers  :: M.Map PlayerId PlayerMessages
              , _gpCardProm :: M.Map (Promise Card) Card
              , _gpActProm  :: M.Map (Promise (PlayerAction, Exchange, Maybe SpecialInformation)) (PlayerAction, Exchange, Maybe SpecialInformation)
              , _gpGS       :: GameState
+             , _gpLog      :: [ActionRecap]
              }
 
 data BlockingOn = NotBlocked
@@ -84,9 +85,9 @@ data PlayerMessages = PlayerMessages { _curBlocking :: Maybe Com
                                      }
 
 class Monad m => HubMonad m where
-    getRand :: m StdGen
+    getRand   :: m StdGen
     tellEvent :: GameId -> GameEvent -> m ()
-    gamelog :: ActionRecap -> m ()
+    gamelog   :: GameId -> ActionRecap -> m ()
 
 defPlayerMessages :: PlayerMessages
 defPlayerMessages = PlayerMessages Nothing []
@@ -100,13 +101,13 @@ makeWrapped ''HubState
 
 type GTrav x = Traversal' (M.Map GameId GameS) x
 
-newtype PureHub time a = PureHub { getPureHub :: RSST (time, StdGen) ([(time, GameId, GameEvent)], [ActionRecap]) HubState (Except PlayerError) a }
+newtype PureHub time a = PureHub { getPureHub :: RSST (time, StdGen) [(time, GameId, GameEvent)] HubState (Except PlayerError) a }
                          deriving (Functor, Applicative, Monad)
 
-runPureHub :: PureHub time a -> time -> StdGen -> HubState -> Either PlayerError (a, HubState, ([(time, GameId, GameEvent)], [ActionRecap]))
+runPureHub :: PureHub time a -> time -> StdGen -> HubState -> Either PlayerError (a, HubState, [(time, GameId, GameEvent)])
 runPureHub a time stdgen hs = runExcept (runRSST (getPureHub a) (time, stdgen) hs)
 
-instance MonadWriter ([(time, GameId, GameEvent)], [ActionRecap]) (PureHub time) where
+instance MonadWriter [(time, GameId, GameEvent)] (PureHub time) where
   tell = PureHub . tell
   listen = PureHub . listen . getPureHub
   pass = PureHub . pass . getPureHub
@@ -124,11 +125,10 @@ instance MonadError PlayerError (PureHub time) where
 
 instance HubMonad (PureHub time) where
   getRand = asks snd
-  gamelog ar = tell (mempty, [ar])
   tellEvent gid event = do
     now <- asks fst
-    tell ([(now,gid,event)], mempty)
-
+    tell [(now,gid,event)]
+  gamelog gid ar = _Wrapped' . ix gid . _GamePlaying . gpLog %= (ar :)
 
 zoomHub :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
 zoomHub trav rr a = do
@@ -147,7 +147,7 @@ _GamePlayers f s = case s of
                        GameJoining m  -> fmap (GameJoining . rebuildMap Joined m) (f (M.keysSet m))
                        GamePlaying gp -> let m = gp ^. gpPlayers
                                          in  fmap (\st -> GamePlaying (gp & gpPlayers .~ rebuildMap defPlayerMessages m st)) (f (M.keysSet m))
-                       GameOver _     -> pure s
+                       GameOver _ _   -> pure s
     where
         rebuildMap :: a -> M.Map PlayerId a -> S.Set PlayerId -> M.Map PlayerId a
         rebuildMap def mp userset = M.filterWithKey (\k _ -> k `S.member` userset) mp `M.union` M.fromSet (const def) userset
@@ -164,8 +164,8 @@ convertMCom mc = case mc of
 extractGameSummary :: GameS -> GameSummary
 extractGameSummary gs = case gs of
                             GameJoining m -> Joining m
-                            GameOver o -> either FinishedBad (Finished . fmap VictoryMap) o
-                            GamePlaying (GP pm _ _ _ _ gs') -> Started (exportGameState gs') $ do
+                            GameOver o _ -> either FinishedBad (Finished . fmap VictoryMap) o
+                            GamePlaying (GP pm _ _ _ _ gs' _) -> Started (exportGameState gs') $ do
                                 (pid, PlayerMessages blk msgs) <- itoList pm
                                 let activity = maybe Waiting (const Playing) blk
                                 return (pid, activity, msgs)
@@ -214,7 +214,7 @@ joinGame pid gid = do
     case hs ^? ix gid of
         Nothing -> throwError GameNotFound
         Just GamePlaying{} -> throwError GameAlreadyStarted
-        Just (GameOver _) -> throwError GameFinished
+        Just (GameOver _ _) -> throwError GameFinished
         Just (GameJoining _) -> do
             tellEvent gid (PlayerJoinedGame pid)
             _Wrapped' . ix gid . _GameJoining . at pid ?= Joined
@@ -244,7 +244,7 @@ startGame gid players = do
     tellEvent gid (GameStarted (S.toList players))
     rgen <- getRand
     let gs = initialGameState rgen (S.toList players)
-        gp = GP (M.fromSet (const defPlayerMessages) players) 1 NotBlocked M.empty M.empty gs
+        gp = GP (M.fromSet (const defPlayerMessages) players) 1 NotBlocked M.empty M.empty gs []
     gameS <- advanceGame gid gp gs playGame
     _Wrapped' . at gid ?= gameS
 
@@ -263,7 +263,7 @@ toggleReady gid pid = do
                 Just Ready -> toggle Joined
                 Just Joined -> toggle Ready <* checkGameStart gid
         Just GamePlaying{} -> throwError GameAlreadyStarted
-        Just (GameOver _) -> throwError GameFinished
+        Just (GameOver _ _) -> throwError GameFinished
 
 playCard :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => Card -> GameId -> PlayerId -> m ()
 playCard = genPlay _BlockingOnCard gpCardProm (_CAC . _2)
@@ -295,12 +295,18 @@ genPlay blockPrism promMap comPrism toplay gid pid = withGame gid $ \gameS ->
           Nothing -> throwError CantPlayNow
 
 -- | The entry point to run the game and update its state
-advanceGame :: HubMonad m => GameId -> GP -> GameState -> GameMonad Promise GameResult -> m GameS
+advanceGame :: (MonadState HubState m, HubMonad m)
+            => GameId
+            -> GP
+            -> GameState
+            -> GameMonad Promise GameResult
+            -> m GameS
 advanceGame gid gp gs act = do
     s <- step gid gp gs act
+    msgs <- use (_Wrapped' . ix gid . _GamePlaying . gpLog)
     return $ case s of
-                 Fin x -> GameOver (Right x)
-                 Failed rr -> GameOver (Left rr)
+                 Fin x -> GameOver (Right x) msgs
+                 Failed rr -> GameOver (Left rr) msgs
                  GPA gp' gs' prom a -> GamePlaying (gp' & gpBlocking .~ BlockingOnAction gs' prom a)
                  GPC gp' gs' prom a -> GamePlaying (gp' & gpBlocking .~ BlockingOnCard gs' prom a)
 
@@ -349,7 +355,7 @@ step gid initialgp gs act = case r of
                                    BroadcastCom (RawMessage msg) -> do
                                        tellEvent gid (BCom msg)
                                        return $ gp & gpPlayers . traverse . playerLog %~ (msg :)
-                                   BroadcastCom (ActionRecapMsg recap) -> gp <$ gamelog recap
+                                   BroadcastCom (ActionRecapMsg recap) -> gp <$ gamelog gid recap
                                    _ -> return gp
                         step gid gp' gs' (f ())
                     ThrowError err -> return $ Failed err
