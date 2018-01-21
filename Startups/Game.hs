@@ -13,12 +13,14 @@ import Startups.CardList
 import Startups.PrettyPrint
 
 import Control.Lens
+import Data.Set.Lens
 import Control.Monad
 import Control.Applicative
 import Control.Monad.Except (throwError)
 import System.Random (randomR)
-import qualified Data.Map as M
+import qualified Data.Map.Strict as M
 import qualified Data.MultiSet as MS
+import qualified Data.Set as S
 import Data.Monoid
 import Data.List.Split (chunksOf)
 import Data.Maybe (fromMaybe)
@@ -248,14 +250,21 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
 handleRecycle :: Age -> PlayerId -> GameMonad p ()
 handleRecycle age recycler = do
   curstate <- use id
-  case curstate ^? discardpile . _NonEmpty of
-      Just nedp -> do
+  let playerCards = setOf (playermap . ix recycler . pCards . folded . cName) curstate
+      canPlay card = case card of
+                       CompanyCard _ _ _ _ -> False
+                       Card cn _ _ _ _ _ _ -> cn `S.notMember` playerCards
+  case curstate ^. discardpile of
+    [] -> tellPlayer recycler (emph "The discard pile was empty, you can't recycle.")
+    lst ->
+      case filter canPlay lst ^? _NonEmpty of
+        Nothing -> tellPlayer recycler (emph "No cards from the discard pile could be played")
+        Just nedp -> do
           generalMessage (showPlayerId recycler <+> "is going to use his recycle ability.")
           card <- askCardSafe age recycler nedp "Choose a card to recycle (play for free)"
           generalMessage (showPlayerId recycler <+> "recycled" <+> shortCard card)
           playermap . ix recycler . pCards %= (card :)
           discardpile %= filter (/= card)
-      Nothing -> tellPlayer recycler (emph "The discard pile was empty, you can't recycle.")
 
 -- | Play a whole age
 playAge :: Age -> GameMonad p ()
