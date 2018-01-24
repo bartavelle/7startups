@@ -24,11 +24,11 @@ data CardType = BaseResource            -- ^ The "brown" cards, provide basic re
               | Commercial              -- ^ The "gold" cards, mainly get you funding
               | HeadHunting             -- ^ The "red" cards, giving poaching power
               | Community               -- ^ The "purple" cards, giving victory points according to various conditions
-              deriving (Eq, Show, Ord)
+              deriving (Eq, Show, Ord, Enum, Bounded)
 
 data Neighbor = NLeft
               | NRight
-              deriving (Ord, Eq, Show)
+              deriving (Ord, Eq, Show, Enum, Bounded)
 
 data EffectDirection = Neighboring !Neighbor
                      | Own
@@ -52,12 +52,12 @@ everyone :: Target
 everyone = neighbors <> myself
 
 data Sharing = Shared | Kept
-             deriving (Ord, Eq, Show)
+             deriving (Ord, Eq, Show, Enum, Bounded)
 
 data ResearchType = Scaling
                   | Programming
                   | CustomSolution
-                  deriving (Ord, Eq, Show)
+                  deriving (Ord, Eq, Show, Enum, Bounded)
 
 data Effect = ProvideResource !Resource !Int !Sharing
             | ResourceChoice (S.Set Resource) !Sharing
