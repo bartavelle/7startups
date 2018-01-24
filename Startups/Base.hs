@@ -32,7 +32,7 @@ data Company = Facebook     -- ^ Rhodes
 data CompanySide = A | B
                  deriving (Eq, Ord, Enum, Show, Bounded)
 
-data CompanyProfile = CompanyProfile Company CompanySide
+data CompanyProfile = CompanyProfile !Company !CompanySide
                     deriving (Eq, Ord, Show)
 
 data Resource = Hype        -- ^ Glass
@@ -76,7 +76,7 @@ instance Monoid Funding where
     Funding a `mappend` Funding b = Funding (a + b)
 
 data PoachingOutcome = Defeat
-                     | Victory Age
+                     | Victory !Age
                      deriving (Eq, Ord, Show)
 
 data VictoryType = PoachingVictory
@@ -86,7 +86,7 @@ data VictoryType = PoachingVictory
                  | RnDVictory
                  | CommercialVictory
                  | CommunityVictory
-                 deriving (Ord, Eq, Show)
+                 deriving (Ord, Eq, Show, Enum, Bounded)
 
 makePrisms ''Age
 makePrisms ''PoachingOutcome

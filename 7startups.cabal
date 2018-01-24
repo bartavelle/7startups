@@ -35,7 +35,7 @@ library
                         Strategies.Compose,
                         Strategies.Bot1
                         STM.Promise
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2
   ghc-prof-options:    -auto-all -caf-all
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving
   build-depends:       base >=4.7 && <5,

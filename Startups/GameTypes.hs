@@ -33,16 +33,16 @@ showPlayerId = emph . pe
 
 data GameState = GameState { _playermap   :: M.Map PlayerId PlayerState
                            , _discardpile :: [Card]
-                           , _rnd         :: StdGen
+                           , _rnd         :: !StdGen
                            } deriving Show
 
 type Neighborhood = (PlayerId, PlayerId)
 
-data PlayerState = PlayerState { _pCompany         :: CompanyProfile
-                               , _pCompanyStage    :: CompanyStage
+data PlayerState = PlayerState { _pCompany         :: !CompanyProfile
+                               , _pCompanyStage    :: !CompanyStage
                                , _pCards           :: [Card]
-                               , _pFunds           :: Funding
-                               , _pNeighborhood    :: Neighborhood
+                               , _pFunds           :: !Funding
+                               , _pNeighborhood    :: !Neighborhood
                                , _pPoachingResults :: [PoachingOutcome]
                                } deriving Show
 
@@ -51,9 +51,11 @@ makeLenses ''PlayerState
 
 cardEffects :: Traversal' PlayerState Effect
 cardEffects = pCards . traverse . cEffect . traverse
+{-# INLINE cardEffects #-}
 
 playerEffects :: PlayerId -> Traversal' GameState Effect
 playerEffects pid = playermap . ix pid . cardEffects
+{-# INLINE playerEffects #-}
 
 neighbor :: Neighbor -> Lens' PlayerState PlayerId
 neighbor NLeft  = pNeighborhood . _1
@@ -85,8 +87,8 @@ data CommunicationType = PlayerCom PlayerId Communication
 
 data ActionRecap
   = ActionRecap
-  { _arAge     :: Age
-  , _arTurn    :: Turn
+  { _arAge     :: !Age
+  , _arTurn    :: !Turn
   , _arPlayers :: M.Map PlayerId PlayerState
   , _arActions :: M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation)
   } deriving Show

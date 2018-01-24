@@ -30,16 +30,16 @@ data Neighbor = NLeft
               | NRight
               deriving (Ord, Eq, Show)
 
-data EffectDirection = Neighboring Neighbor
+data EffectDirection = Neighboring !Neighbor
                      | Own
                      deriving (Ord, Eq, Show)
 
 type Target = S.Set EffectDirection
 
 data Condition = HappensOnce
-               | PerCard Target (S.Set CardType)
-               | ByPoachingResult Target (S.Set PoachingOutcome)
-               | ByStartupStage Target
+               | PerCard !Target (S.Set CardType)
+               | ByPoachingResult !Target (S.Set PoachingOutcome)
+               | ByStartupStage !Target
                deriving (Ord, Eq, Show)
 
 neighbors :: Target
@@ -59,13 +59,13 @@ data ResearchType = Scaling
                   | CustomSolution
                   deriving (Ord, Eq, Show)
 
-data Effect = ProvideResource Resource Int Sharing
-            | ResourceChoice (S.Set Resource) Sharing
+data Effect = ProvideResource !Resource !Int !Sharing
+            | ResourceChoice (S.Set Resource) !Sharing
             | CheapExchange (S.Set Resource) (S.Set Neighbor)
-            | AddVictory VictoryType VictoryPoint Condition
-            | GainFunding Funding Condition
-            | RnD ResearchType
-            | Poaching Poacher
+            | AddVictory !VictoryType !VictoryPoint !Condition
+            | GainFunding !Funding !Condition
+            | RnD !ResearchType
+            | Poaching !Poacher
             | ScientificBreakthrough -- gives any science type
             | Recycling -- play a card in the discard pile
             | Opportunity (S.Set Age) -- build for free once per age
@@ -73,7 +73,7 @@ data Effect = ProvideResource Resource Int Sharing
             | CopyCommunity
             deriving (Ord, Eq, Show)
 
-data Cost = Cost (MS.MultiSet Resource) Funding
+data Cost = Cost (MS.MultiSet Resource) !Funding
           deriving (Ord, Eq, Show)
 
 instance Monoid Cost where
@@ -93,17 +93,17 @@ instance IsString Cost where
             toCost '$' = Cost mempty 1
             toCost _   = error "Invalid cost string"
 
-data Card = Card { _cName       :: T.Text
-                 , _cMinplayers :: PlayerCount
-                 , _cAge        :: Age
-                 , _cType       :: CardType
-                 , _cCost       :: Cost
+data Card = Card { _cName       :: !T.Text
+                 , _cMinplayers :: !PlayerCount
+                 , _cAge        :: !Age
+                 , _cType       :: !CardType
+                 , _cCost       :: !Cost
                  , _cFree       :: [T.Text]
                  , _cEffect     :: [Effect]
                  }
-          | CompanyCard { _cCompany :: CompanyProfile
-                        , _cStage   :: CompanyStage
-                        , _cCost    :: Cost
+          | CompanyCard { _cCompany :: !CompanyProfile
+                        , _cStage   :: !CompanyStage
+                        , _cCost    :: !Cost
                         , _cEffect  :: [Effect]
                         }
           deriving (Ord,Eq,Show)
