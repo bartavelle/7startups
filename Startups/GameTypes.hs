@@ -5,6 +5,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 
 module Startups.GameTypes where
@@ -108,41 +109,41 @@ data GameInstr p a where
 
 type GameMonad p = ProgramT (GameInstr p) (State GameState)
 
--- | Ask the player which card he would like to play.
-playerDecision :: Age -> Turn -> PlayerId -> NonEmpty Card -> GameMonad p (p (PlayerAction, Exchange, Maybe SpecialInformation))
-playerDecision a t p c = singleton (PlayerDecision a t p c)
-
--- | Tell some information to a specific player
-tellPlayer :: PlayerId -> Message -> GameMonad p ()
-tellPlayer p = singleton . Message . PlayerCom p . RawMessage
-
--- | Broadcast some information
-generalMessage :: Message -> GameMonad p ()
-generalMessage = singleton . Message . BroadcastCom . RawMessage
-
--- | Awaits a "card" promise
-getPromiseCard :: p Card -> GameMonad p Card
-getPromiseCard = singleton . GetPromiseCard
-
--- | Awaits an "action" promise
-getPromiseAction :: p (PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad p (PlayerAction, Exchange, Maybe SpecialInformation)
-getPromiseAction = singleton . GetPromiseAct
-
--- | Gives a quick rundown of all actions
-actionRecap :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation) -> GameMonad p ()
-actionRecap age turn mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg (ActionRecap age turn (s ^. playermap) mm)
-
 instance MonadError PrettyDoc (ProgramT (GameInstr p) (State GameState)) where
     throwError = singleton . ThrowError
     catchError a handler = singleton (CatchError a handler)
+
+class (Monad m, MonadError PrettyDoc m, MonadState GameState m) => GMonad p m | m -> p where
+    -- | Ask the player which card he would like to play.
+    playerDecision   :: Age -> Turn -> PlayerId -> NonEmpty Card -> m (p (PlayerAction, Exchange, Maybe SpecialInformation))
+    askCard          :: Age -> PlayerId -> NonEmpty Card -> Message -> m (p Card)
+    -- | Tell some information to a specific player
+    tellPlayer       :: PlayerId -> Message -> m ()
+    -- | Broadcast some information
+    generalMessage   :: Message -> m ()
+    -- | Awaits a "card" promise
+    getPromiseCard   :: p Card -> m Card
+    -- | Awaits an "action" promise
+    getPromiseAction :: p (PlayerAction, Exchange, Maybe SpecialInformation) -> m (PlayerAction, Exchange, Maybe SpecialInformation)
+    -- | Gives a quick rundown of all actions
+    actionRecap      :: Age -> Turn -> M.Map PlayerId (PlayerAction, Exchange, Maybe SpecialInformation) -> m ()
+
+instance GMonad p (GameMonad p) where
+    playerDecision a t p c = singleton (PlayerDecision a t p c)
+    tellPlayer p = singleton . Message . PlayerCom p . RawMessage
+    generalMessage = singleton . Message . BroadcastCom . RawMessage
+    getPromiseCard = singleton . GetPromiseCard
+    getPromiseAction = singleton . GetPromiseAct
+    actionRecap age turn mm = get >>= \s -> singleton . Message . BroadcastCom $ ActionRecapMsg (ActionRecap age turn (s ^. playermap) mm)
+    askCard a p cl m = singleton (AskCard a p cl m)
 
 -- | Ask the player to chose a card, along with a descriptive message.
 -- This is used for the Recycling and CopyCommunity effects.
 -- We define a "safe" version of the `askCard` function, that makes sure the
 -- player doesn't introduce a new card in the game.
-askCardSafe :: Age -> PlayerId -> NonEmpty Card -> Message -> GameMonad p Card
+askCardSafe :: GMonad p m => Age -> PlayerId -> NonEmpty Card -> Message -> m Card
 askCardSafe a p cl m = do
-    card <- singleton (AskCard a p cl m) >>= getPromiseCard
+    card <- askCard a p cl m >>= getPromiseCard
     when (card `notElem` (cl ^. re _NonEmpty)) (throwError (showPlayerId p <+> "tried to play a non proposed card"))
     return card
 

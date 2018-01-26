@@ -19,7 +19,7 @@ import Prelude
 
 main :: IO ()
 main = do
-    let strat = composeStrat stdGenStateStrat [("bot1", bot1 pure)]
+    let strat = composeStrat (stdGenStateStrat pure) [("bot1", bot1 pure)]
     stds <- replicateM 1000 newStdGen
     let roundR rnd = case pureGame strat rnd ["bot1", "rnd1", "rnd2", "rnd4"] of
                           (_, Left rr) -> error (show rr)

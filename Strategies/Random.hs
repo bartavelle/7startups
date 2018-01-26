@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 module Strategies.Random where
 
 import Startups.Interpreter
@@ -12,21 +13,21 @@ import Control.Lens
 import Control.Applicative
 import Prelude
 
-randStrategy :: (Monad m, Monad p, Functor m) => (Int -> Int -> m Int) -> Strategy p m
-randStrategy roll = Strategy pd ac
+randStrategy :: forall p m. (Monad m, Functor m) => (forall a. a -> p a) -> (Int -> Int -> m Int) -> Strategy p m
+randStrategy pureP roll = Strategy pd ac
     where
         pd age _ pid necards stt = do
             let pm = stt ^. playermap
                 allactions = NE.toList $ allowableActions age pid necards pm
                 nodrops = filter (\(PlayerAction actiontype _,_,_) -> actiontype /= Drop) allactions
                 actions = if null nodrops then allactions else nodrops
-            return . (actions !!) <$> roll 0 (length actions - 1)
+            pureP . (actions !!) <$> roll 0 (length actions - 1)
         ac _ _ necards _ _ = do
             let cards = _NonEmpty # necards
-            (return . (cards !!)) <$> roll 0 (length cards - 1)
+            (pureP . (cards !!)) <$> roll 0 (length cards - 1)
 
-stdGenStateStrat :: (Monad p, MonadState StdGen m) => Strategy p m
-stdGenStateStrat = randStrategy $ \mi mx -> do
+stdGenStateStrat :: forall p m. (Monad p, MonadState StdGen m) => (forall a. a -> p a) -> Strategy p m
+stdGenStateStrat pureP = randStrategy pureP $ \mi mx -> do
     g <- get
     let (o,g') = randomR (mi, mx) g
     put g'

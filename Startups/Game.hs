@@ -205,7 +205,7 @@ resolvePoaching age plyrs =
 --
 -- Not that all cards effects are revealed simultaneously, and all cards
 -- that let player gain money must be played after all cards are played.
-playTurn :: Age -> Turn -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card], [PlayerId])
+playTurn :: GMonad p m => Age -> Turn -> M.Map PlayerId [Card] -> m (M.Map PlayerId [Card], [PlayerId])
 playTurn age turn rawcardmap = do
     stt <- use id
     -- compute the list of players that are playing this turn. Only players
@@ -235,7 +235,7 @@ playTurn age turn rawcardmap = do
     return (o, recyclers)
 
 -- | Rotates the player hands, at the end of each turn.
-rotateHands :: Age -> M.Map PlayerId [Card] -> GameMonad p (M.Map PlayerId [Card])
+rotateHands :: GMonad p m => Age -> M.Map PlayerId [Card] -> m (M.Map PlayerId [Card])
 rotateHands age cardmap = itraverse rotatePlayer cardmap
     where
         rotatePlayer pid _ = do
@@ -247,7 +247,7 @@ rotateHands age cardmap = itraverse rotatePlayer cardmap
                         then NLeft
                         else NRight
 
-handleRecycle :: Age -> PlayerId -> GameMonad p ()
+handleRecycle :: GMonad p m => Age -> PlayerId -> m ()
 handleRecycle age recycler = do
   curstate <- use id
   let playerCards = setOf (playermap . ix recycler . pCards . folded . cName) curstate
@@ -267,7 +267,7 @@ handleRecycle age recycler = do
           discardpile %= filter (/= card)
 
 -- | Play a whole age
-playAge :: Age -> GameMonad p ()
+playAge :: GMonad p m => Age -> m ()
 playAge age = do
     cards <- dealCards age
     let turnPlay crds turn = do
@@ -296,7 +296,7 @@ playAge age = do
 
 -- | Resolves the effect of the CopyCommunity effect that let a player copy
 -- an arbitrary community card from one of his neighbors.
-checkCopyCommunity :: GameMonad p ()
+checkCopyCommunity :: GMonad p m => m ()
 checkCopyCommunity = do
     pm <- use playermap
     ifor_ pm $ \pid stt -> when (has (cardEffects . _CopyCommunity) stt) $ do
@@ -336,7 +336,7 @@ victoryPoints' stt = M.mapWithKey computeScore stt
 
 -- | The main game function, runs a game. The state must be initialized in
 -- the same way as the 'initGame' function.
-playGame :: GameMonad p (M.Map PlayerId (M.Map VictoryType VictoryPoint))
+playGame :: GMonad p m => m (M.Map PlayerId (M.Map VictoryType VictoryPoint))
 playGame = do
     initGame
     actionRecap Age1 1 mempty

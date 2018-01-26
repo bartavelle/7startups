@@ -10,8 +10,6 @@ import Startups.Game
 import Startups.PrettyPrint
 import Startups.Utils
 import Startups.CardList
-import Backends.Pure
-import Strategies.Random
 
 import qualified Data.Map.Strict as M
 import Control.Lens
@@ -21,6 +19,7 @@ import System.Random (mkStdGen)
 import Data.List (sort)
 import Data.Tuple (swap)
 import Data.List.NonEmpty (NonEmpty)
+import Control.Monad.State.Strict (evalState)
 
 cardpreview :: PlayerId -> M.Map PlayerId PlayerState -> Card -> PrettyDoc
 cardpreview pid pmap card =
@@ -116,7 +115,7 @@ playerStartup cp cs = vcat $ map genStage [Project .. getMaxStage cp]
 vicmap :: M.Map PlayerId PlayerState -> M.Map PlayerId VictoryPoint
 vicmap stt = victorydetails & traverse %~ (mconcat . M.elems)
     where
-        victorydetails = runPure stdGenStateStrat (mkStdGen 0) (GameState stt [] (mkStdGen 0)) victoryPoints ^. _2 . _Right
+        victorydetails = evalState victoryPoints (GameState stt [] (mkStdGen 0))
 
 -- | One line recap for a player
 playerRecap :: PlayerId -> PlayerState -> VictoryPoint -> PrettyDoc

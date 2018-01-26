@@ -23,7 +23,7 @@ readNumber = do
         else -1
 
 randStrat :: Strategy Identity IO
-randStrat = randStrategy (curry randomRIO)
+randStrat = randStrategy pure (curry randomRIO)
 
 playerStrat :: Strategy Identity IO
 playerStrat = Strategy pd ac
