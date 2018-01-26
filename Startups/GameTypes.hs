@@ -67,7 +67,7 @@ type Message = PrettyDoc
 data PlayerAction = PlayerAction ActionType Card
                   deriving (Show, Eq)
 data ActionType = Play | Drop | BuildCompany
-                deriving (Show, Eq, Enum, Bounded)
+                deriving (Show, Eq, Ord, Enum, Bounded)
 
 -- | A data structure that represents special capabilities that are used
 -- -- when playing a card.
