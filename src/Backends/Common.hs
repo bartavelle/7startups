@@ -12,6 +12,7 @@ import Startups.Utils
 import Startups.CardList
 
 import qualified Data.Map.Strict as M
+import qualified RMultiSet as MS
 import Control.Lens
 import Data.Monoid
 import qualified Data.Foldable as F
@@ -48,11 +49,11 @@ playerActionDesc showmode pid pmap (PlayerAction a card, exch, si) = actiondesc 
         actiondesc BuildCompany = withCardColor Community "Build a company stage" <+> secret "using"
         nn n = pmap ^. ix pid . neighbor n
         exchdesc = sepBy ", " . map (uncurry exchdesc') . itoList
-        exchdesc' neigh resources = "exch." <+> F.foldMap pe resources
+        exchdesc' neigh resources = "exch." <+> MS.foldMap pe resources
                                             <+> "with"
                                             <+> showPlayerId (nn neigh)
                                             <+> "for"
-                                            <+> pe (F.foldMap (getExchangeCost pid neigh pmap) resources)
+                                            <+> pe (MS.foldMap (getExchangeCost pid neigh pmap) resources)
         sidesc (Just UseOpportunity) = " using the opportunity capability"
         sidesc Nothing = mempty
 

@@ -19,7 +19,7 @@ import Control.Applicative
 import Control.Monad.Except (throwError)
 import System.Random (randomR)
 import qualified Data.Map.Strict as M
-import qualified Data.MultiSet as MS
+import qualified RMultiSet as MS
 import qualified Data.Set as S
 import Data.Monoid
 import Data.List.Split (chunksOf)
@@ -102,12 +102,12 @@ getPlayerState pid = preuse (playermap . ix pid) >>= \m -> case m of
 -- condition where a player could try an exchange that is more expensive
 -- than what he owns, hoping some other player with exchange something with
 -- him.
-resolveExchange :: NonInteractive m => PlayerId -> Exchange -> m (MS.MultiSet Resource, AddMap PlayerId Funding)
+resolveExchange :: NonInteractive m => PlayerId -> Exchange -> m (MS.ResourceSet, AddMap PlayerId Funding)
 resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' (getExchange exch)
     where
         resolveExchange' neigh reslist = do
             stt <- use playermap
-            let cost = getSum $ reslist ^. folded . to (Sum . getExchangeCost pid neigh stt)
+            let cost = getSum $ MS.toList reslist ^. folded . to (Sum . getExchangeCost pid neigh stt)
                 playermoney = fromMaybe 0 (stt ^? ix pid . pFunds)
                 neighname = stt ^. ix pid . neighbor neigh
                 neigresources = stt ^. ix neighname . to (availableResources Exchange)
@@ -121,7 +121,7 @@ resolveExchange pid exch = mconcat  . M.elems <$> itraverse resolveExchange' (ge
 playCard :: NonInteractive m
          => Age
          -> PlayerId
-         -> MS.MultiSet Resource
+         -> MS.ResourceSet
          -> Bool -- ^ use opportunity
          -> Card
          -> m ()

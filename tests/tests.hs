@@ -11,9 +11,11 @@ import Startups.Exported
 import Backends.GenericHub
 import Backends.Pure
 import Strategies.Random
+import qualified RMultiSet as RS
+import qualified Data.MultiSet as MS
 
 import Control.Lens
-import Data.List (foldl')
+import Data.List (foldl', sort)
 import Test.Hspec
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -62,8 +64,28 @@ testState = GameState (M.fromList players) [] (mkStdGen 5)
                                                                        , "Fußball"
                                                                        ]
 
+gres :: Gen Resource
+gres = Test.QuickCheck.elements [minBound .. maxBound]
+
 main :: IO ()
 main = hspec $ do
+    describe "ResourceSet" $ do
+      it "fromList / toList" $ forAll (listOf gres) $
+        \l -> RS.toList (RS.fromList l) == sort l
+      it "singleton" $ forAll gres $
+        \r -> RS.toList (RS.singleton r) == [r]
+      let testOn f g = forAll ( (,) <$> listOf gres <*> listOf gres ) $
+            \(l1, l2) -> f (MS.fromList l1) (MS.fromList l2) == g (RS.fromList l1) (RS.fromList l2)
+          testOnList f g = testOn (\l1 l2 -> MS.toList (f l1 l2)) (\l1 l2 -> RS.toList (g l1 l2)) 
+          testOnR f g = forAll ( (,) <$> gres <*> listOf gres ) $
+            \(r, l) -> f r (MS.fromList l) == g r (RS.fromList l)
+          testOnRList f g = forAll ( (,) <$> gres <*> listOf gres ) $
+            \(r, l) -> MS.toList (f r (MS.fromList l)) == RS.toList (g r (RS.fromList l))
+      it "subSetOf" $ testOn MS.isSubsetOf RS.isSubsetOf
+      it "difference" $ testOnList MS.difference RS.difference
+      it "member" $ testOnR MS.member RS.member
+      it "insert" $ testOnRList MS.insert RS.insert
+      it "delete" $ testOnRList MS.delete RS.delete
     describe "Cards" $ do
         it "are all distinct" $ let extra = foldl' findExtra ([], S.empty) allcards
                                     findExtra (curlst, cardset) card | card `S.member` cardset = (card : curlst, cardset)

@@ -4,7 +4,7 @@ module Startups.Cards where
 
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Data.MultiSet as MS
+import qualified RMultiSet as MS
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -73,7 +73,7 @@ data Effect = ProvideResource !Resource !Int !Sharing
             | CopyCommunity
             deriving (Ord, Eq, Show)
 
-data Cost = Cost (MS.MultiSet Resource) !Funding
+data Cost = Cost MS.ResourceSet !Funding
           deriving (Ord, Eq, Show)
 
 instance Monoid Cost where
@@ -108,7 +108,7 @@ data Card = Card { _cName       :: !T.Text
                         }
           deriving (Ord,Eq,Show)
 
-newtype Exchange = RExchange { getExchange :: M.Map Neighbor (MS.MultiSet Resource) }
+newtype Exchange = RExchange { getExchange :: M.Map Neighbor MS.ResourceSet }
                    deriving (Show, Eq)
 
 instance Monoid Exchange where
@@ -116,7 +116,7 @@ instance Monoid Exchange where
     mappend (RExchange a) (RExchange b) = RExchange (M.unionWith (<>) a b)
 
 instance ToJSON Exchange where
-    toJSON = toJSON . map (_2 %~ F.toList) . itoList . getExchange
+    toJSON = toJSON . map (_2 %~ MS.toList) . itoList . getExchange
 
 instance FromJSON Exchange where
     parseJSON = fmap (RExchange . M.fromList) . (parseJSON >=> mapM parsePair)
@@ -129,12 +129,12 @@ makePrisms ''Effect
 makeLenses ''Card
 
 instance ToJSON Cost where
-    toJSON (Cost c f) = object [ "resources" .= MS.toOccurList c
+    toJSON (Cost c f) = object [ "resources" .= c
                                , "funding"   .= f
                                ]
 
 instance FromJSON Cost where
-    parseJSON = withObject "cost" $ \o -> Cost <$> (fmap MS.fromOccurList (o .: "resources"))
+    parseJSON = withObject "cost" $ \o -> Cost <$> o .: "resources"
                                                <*> o .: "funding"
 
 $(deriveElmDef defaultOptions ''Exchange)

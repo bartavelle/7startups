@@ -5,6 +5,7 @@ module Startups.PrettyPrint where
 
 import Startups.Base
 import Startups.Cards
+import qualified RMultiSet as MS
 
 import Data.Monoid
 import Data.String
@@ -145,7 +146,7 @@ emph :: PrettyDoc -> PrettyDoc
 emph = Emph
 
 pcost :: Cost -> PrettyDoc
-pcost (Cost r m) = F.foldMap pe r <> pe m
+pcost (Cost r m) = MS.foldMap pe r <> pe m
 
 indent :: Int -> PrettyDoc -> PrettyDoc
 indent = Indent

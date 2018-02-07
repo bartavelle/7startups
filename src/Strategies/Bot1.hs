@@ -14,7 +14,7 @@ import Control.Monad.State.Strict
 import Control.Lens
 import qualified Data.IntMap as IM
 import qualified Data.List.NonEmpty as NE
-import qualified Data.MultiSet as MS
+import qualified RMultiSet as MS
 import qualified Data.Map.Strict as M
 import Data.Set.Lens
 import qualified Data.Set as S

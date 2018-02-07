@@ -21,7 +21,7 @@ import qualified Data.Text as T
 import qualified Data.Set as S
 import Data.Set.Lens
 import qualified Data.Map.Strict as M
-import qualified Data.MultiSet as MS
+import qualified RMultiSet as MS
 import System.Random (StdGen)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List (nub)
@@ -64,7 +64,7 @@ data ResourceQueryType = Exchange | OwnRes
 
 -- | Gets all possible resource combinations that are available. The
 -- results depend on whether the resource is shareable.
-availableResources :: ResourceQueryType -> PlayerState -> [MS.MultiSet Resource]
+availableResources :: ResourceQueryType -> PlayerState -> [MS.ResourceSet]
 availableResources qt p =
     let getR (ProvideResource r n t) = [(r,n) | isApplicable t]
         getR (ResourceChoice rs t) = if isApplicable t
@@ -73,7 +73,7 @@ availableResources qt p =
         getR _ = []
         isApplicable t = t == Shared || qt == OwnRes
         effects = p ^.. cardEffects . to getR . filtered (not . null)
-        getCombination :: [[(Resource, Int)]] -> [MS.MultiSet Resource]
+        getCombination :: [[(Resource, Int)]] -> [MS.ResourceSet]
         getCombination [] = [mempty]
         getCombination (x:xs) = do
             (cv, cn) <- x
@@ -98,7 +98,7 @@ getExchangeCost pid neigh playrmap res =
 -- | Checks whether a given player, with extra resources (coming from an
 -- exchange), can afford a given card, resource-wise. It doesn't check the
 -- funds.
-isAffordable :: PlayerState -> MS.MultiSet Resource -> Card -> Bool
+isAffordable :: PlayerState -> MS.ResourceSet -> Card -> Bool
 isAffordable playerState extraResources card =
     let allresources = map (<> extraResources) (availableResources OwnRes playerState)
         Cost rescost _ = card ^. cCost
@@ -166,11 +166,11 @@ getCheapExchanges ps = M.fromListWith (<>) $ do
 -- | This function tries to find all possible exchanges that satisfy
 -- a given research
 -- This function might need refactoring as it is a bit ugly ...
-findExchange :: MS.MultiSet Resource -> M.Map Neighbor (S.Set Resource) -> MS.MultiSet Resource -> MS.MultiSet Resource -> [(Exchange, Funding)]
+findExchange :: MS.ResourceSet -> M.Map Neighbor (S.Set Resource) -> MS.ResourceSet -> MS.ResourceSet -> [(Exchange, Funding)]
 findExchange toAcq cheapExchanges = runSearch (MS.toList toAcq)
     where
         cost v r = if has (ix v . ix r) cheapExchanges then 1 else 2
-        runSearch :: [Resource] -> MS.MultiSet Resource -> MS.MultiSet Resource -> [(Exchange, Funding)]
+        runSearch :: [Resource] -> MS.ResourceSet -> MS.ResourceSet -> [(Exchange, Funding)]
         runSearch [] _ _ = [(mempty, 0)]
         runSearch (t:ts) lp rp =
             let lexchange = if MS.member t lp
@@ -185,8 +185,14 @@ findExchange toAcq cheapExchanges = runSearch (MS.toList toAcq)
 
 -- | List all the ways a given card can be built. This is the most tricky
 -- function.
-getCardActions :: Age -> PlayerState -> [MS.MultiSet Resource] -> [MS.MultiSet Resource] -> Card -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
-getCardActions age playerstate lplayer rplayer card
+getCardActions :: Age
+               -> PlayerState
+               -> S.Set T.Text
+               -> [MS.ResourceSet]
+               -> [MS.ResourceSet]
+               -> Card
+               -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
+getCardActions age playerstate alreadyBuilt lplayer rplayer card
     -- We can't build 2 cards with the same name
     | alreadyBuilt ^. contains cardname = []
     -- We can have a card that enable free construction of this card
@@ -209,7 +215,6 @@ getCardActions age playerstate lplayer rplayer card
         -- Some helpers ...
         build e s = (PlayerAction Play card, e, s)
         cardname = view cName card
-        alreadyBuilt = setOf (pCards . traverse . cName) playerstate
         myresources = availableResources OwnRes playerstate
         myfunding = playerstate ^. pFunds
         Cost neededresources neededfunding = card ^. cCost
@@ -249,15 +254,16 @@ allowableActions age pid necards players =
                     comp       = playerstate ^. pCompany
                     nstagecard = getResourceCard comp (succ cstage)
                     maxstage   = getMaxStage comp
+                    alreadyBuilt = setOf (pCards . traverse . cName) playerstate
                     compaction | cstage == maxstage = mempty
                                | otherwise = do
-                                   (_, exch, si) <- getCardActions age playerstate lplayer rplayer nstagecard
+                                   (_, exch, si) <- getCardActions age playerstate alreadyBuilt lplayer rplayer nstagecard
                                    -- you can't build your company using a special ability. This is artificial,
                                    -- this check should be done at the "getCardActions" part.
                                    guard (has _Nothing si)
                                    cardToDrop <- _NonEmpty # necards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
-                in concatMap (getCardActions age playerstate lplayer rplayer) (_NonEmpty # necards) ++ compaction
+                in concatMap (getCardActions age playerstate alreadyBuilt lplayer rplayer) (_NonEmpty # necards) ++ compaction
             _ -> []
 
 -- | Creates an initial gamestate.
