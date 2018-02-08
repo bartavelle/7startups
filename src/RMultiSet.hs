@@ -15,6 +15,7 @@ module RMultiSet
   , delete
   , difference
   , toSet
+  , RMultiSet.null
   ) where
 
 import qualified Data.Set as S
@@ -52,6 +53,10 @@ resources = [minBound .. maxBound]
 toList :: ResourceSet -> [Resource]
 toList = concatMap (uncurry (flip replicate)) . toOccurList
 {-# INLINE toList #-}
+
+null :: ResourceSet -> Bool
+null (ResourceSet r) = r == 0
+{-# INLINE null #-}
 
 occur :: Resource -> ResourceSet -> Int
 occur r (ResourceSet s) = fromIntegral ((s `shiftR` (fromEnum r * 8)) .&. 0xff)

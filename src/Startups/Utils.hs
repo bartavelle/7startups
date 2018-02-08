@@ -79,7 +79,6 @@ availableResources qt p =
             (cv, cn) <- x
             rst <- getCombination xs
             return (MS.insertMany cv cn rst)
-
     in  getCombination effects
 
 -- | Computes if it is possible to get a cheap exchange rate for a given
@@ -190,9 +189,10 @@ getCardActions :: Age
                -> S.Set T.Text
                -> [MS.ResourceSet]
                -> [MS.ResourceSet]
+               -> [MS.ResourceSet]
                -> Card
                -> [(PlayerAction, Exchange, Maybe SpecialInformation)]
-getCardActions age playerstate alreadyBuilt lplayer rplayer card
+getCardActions age playerstate alreadyBuilt myresources lplayer rplayer card
     -- We can't build 2 cards with the same name
     | alreadyBuilt ^. contains cardname = []
     -- We can have a card that enable free construction of this card
@@ -215,7 +215,6 @@ getCardActions age playerstate alreadyBuilt lplayer rplayer card
         -- Some helpers ...
         build e s = (PlayerAction Play card, e, s)
         cardname = view cName card
-        myresources = availableResources OwnRes playerstate
         myfunding = playerstate ^. pFunds
         Cost neededresources neededfunding = card ^. cCost
         -- This is suboptimal : we keep all exchanges that cost the least
@@ -255,15 +254,16 @@ allowableActions age pid necards players =
                     nstagecard = getResourceCard comp (succ cstage)
                     maxstage   = getMaxStage comp
                     alreadyBuilt = setOf (pCards . traverse . cName) playerstate
+                    myresources = availableResources OwnRes playerstate
                     compaction | cstage == maxstage = mempty
                                | otherwise = do
-                                   (_, exch, si) <- getCardActions age playerstate alreadyBuilt lplayer rplayer nstagecard
+                                   (_, exch, si) <- getCardActions age playerstate alreadyBuilt myresources lplayer rplayer nstagecard
                                    -- you can't build your company using a special ability. This is artificial,
                                    -- this check should be done at the "getCardActions" part.
                                    guard (has _Nothing si)
                                    cardToDrop <- _NonEmpty # necards
                                    return (PlayerAction BuildCompany cardToDrop, exch, Nothing)
-                in concatMap (getCardActions age playerstate alreadyBuilt lplayer rplayer) (_NonEmpty # necards) ++ compaction
+                in concatMap (getCardActions age playerstate alreadyBuilt myresources lplayer rplayer) (_NonEmpty # necards) ++ compaction
             _ -> []
 
 -- | Creates an initial gamestate.
