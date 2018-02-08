@@ -65,6 +65,14 @@ library
   -- hs-source-dirs:      
   default-language:    Haskell2010
 
+Benchmark multiset
+    hs-source-dirs:       bench
+    type:                 exitcode-stdio-1.0
+    ghc-options:          -Wall
+    build-depends:        7startups, base, multiset, criterion
+    main-is:              multiset.hs
+    default-language:     Haskell2010
+
 Test-Suite tests
     hs-source-dirs:       tests
     type:                 exitcode-stdio-1.0
