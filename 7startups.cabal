@@ -37,7 +37,7 @@ library
                        Strategies.Bot1
                        STM.Promise
                        RMultiSet
-  ghc-options:         -Wall -O2
+  ghc-options:         -Wall -Wcompat -Wincomplete-record-updates -Wincomplete-uni-patterns -Wredundant-constraints
   ghc-prof-options:    -auto-all -caf-all
   other-extensions:    OverloadedStrings, GeneralizedNewtypeDeriving
   build-depends:       base >=4.7 && <5,
