@@ -23,6 +23,7 @@ import Data.Aeson
 import Data.Bits
 import Data.Word
 import Data.List (foldl')
+import Data.Semigroup
 
 import Startups.Base
 
@@ -33,10 +34,15 @@ newtype ResourceSet
 instance Show ResourceSet where
     show = show . toList
 
+instance Semigroup ResourceSet where
+    ResourceSet a <> ResourceSet b = ResourceSet (a + b)
+    {-# INLINE (<>) #-}
+
+
 instance Monoid ResourceSet where
     mempty = ResourceSet 0
     {-# INLINE mempty #-}
-    mappend (ResourceSet a) (ResourceSet b) = ResourceSet (a + b)
+    mappend = (<>)
     {-# INLINE mappend #-}
 
 singleton :: Resource -> ResourceSet

@@ -13,7 +13,7 @@ import Control.Lens
 import Control.Applicative
 import Prelude
 
-randStrategy :: forall p m. (Monad m, Functor m) => (forall a. a -> p a) -> (Int -> Int -> m Int) -> Strategy p m
+randStrategy :: forall p m. Monad m => (forall a. a -> p a) -> (Int -> Int -> m Int) -> Strategy p m
 randStrategy pureP roll = Strategy pd ac
     where
         pd age _ pid necards stt = do
@@ -26,7 +26,7 @@ randStrategy pureP roll = Strategy pd ac
             let cards = _NonEmpty # necards
             (pureP . (cards !!)) <$> roll 0 (length cards - 1)
 
-stdGenStateStrat :: forall p m. (Monad p, MonadState StdGen m) => (forall a. a -> p a) -> Strategy p m
+stdGenStateStrat :: forall p m. MonadState StdGen m => (forall a. a -> p a) -> Strategy p m
 stdGenStateStrat pureP = randStrategy pureP $ \mi mx -> do
     g <- get
     let (o,g') = randomR (mi, mx) g

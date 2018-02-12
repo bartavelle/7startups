@@ -15,7 +15,7 @@ import Startups.GameTypes
 import Control.Lens
 import Data.Foldable (Foldable)
 import Control.Applicative
-import Data.Monoid
+import Data.Semigroup
 import Control.Monad
 import qualified Data.Text as T
 import qualified Data.Set as S
@@ -55,9 +55,12 @@ instance Ord k => At (AddMap k a) where
         where mv = M.lookup k m
     {-# INLINE at #-}
 
+instance (Monoid n, Ord k) => Semigroup (AddMap k n) where
+    AddMap m1 <> AddMap m2 = AddMap (M.unionWith mappend m1 m2)
+
 instance (Monoid n, Ord k) => Monoid (AddMap k n) where
+    mappend = (<>)
     mempty = AddMap mempty
-    AddMap m1 `mappend` AddMap m2 = AddMap (M.unionWith (<>) m1 m2)
 
 data ResourceQueryType = Exchange | OwnRes
                        deriving Eq

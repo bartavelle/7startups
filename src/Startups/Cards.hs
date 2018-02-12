@@ -7,40 +7,44 @@ import qualified Data.Text as T
 import qualified RMultiSet as MS
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.String
 import Control.Lens hiding ((.=))
 import Control.Monad
 import Data.Aeson hiding (defaultOptions)
+import Data.Semigroup
 import Elm.Derive
 import Data.Char (toLower)
 
 import Startups.Base
 
-data CardType = BaseResource            -- ^ The "brown" cards, provide basic resources
-              | AdvancedResource        -- ^ The "grey" cards, provide advanced resources
-              | Infrastructure          -- ^ The "blue" cards, directly give victory points
-              | ResearchDevelopment     -- ^ The "green" cards, the more you have, the more victory points you get
-              | Commercial              -- ^ The "gold" cards, mainly get you funding
-              | HeadHunting             -- ^ The "red" cards, giving poaching power
-              | Community               -- ^ The "purple" cards, giving victory points according to various conditions
-              deriving (Eq, Show, Ord, Enum, Bounded)
+data CardType
+    = BaseResource            -- ^ The "brown" cards, provide basic resources
+    | AdvancedResource        -- ^ The "grey" cards, provide advanced resources
+    | Infrastructure          -- ^ The "blue" cards, directly give victory points
+    | ResearchDevelopment     -- ^ The "green" cards, the more you have, the more victory points you get
+    | Commercial              -- ^ The "gold" cards, mainly get you funding
+    | HeadHunting             -- ^ The "red" cards, giving poaching power
+    | Community               -- ^ The "purple" cards, giving victory points according to various conditions
+    deriving (Eq, Show, Ord, Enum, Bounded)
 
-data Neighbor = NLeft
-              | NRight
-              deriving (Ord, Eq, Show, Enum, Bounded)
+data Neighbor
+    = NLeft
+    | NRight
+    deriving (Ord, Eq, Show, Enum, Bounded)
 
-data EffectDirection = Neighboring !Neighbor
-                     | Own
-                     deriving (Ord, Eq, Show)
+data EffectDirection
+    = Neighboring !Neighbor
+    | Own
+    deriving (Ord, Eq, Show)
 
 type Target = S.Set EffectDirection
 
-data Condition = HappensOnce
-               | PerCard !Target (S.Set CardType)
-               | ByPoachingResult !Target (S.Set PoachingOutcome)
-               | ByStartupStage !Target
-               deriving (Ord, Eq, Show)
+data Condition
+    = HappensOnce
+    | PerCard !Target (S.Set CardType)
+    | ByPoachingResult !Target (S.Set PoachingOutcome)
+    | ByStartupStage !Target
+    deriving (Ord, Eq, Show)
 
 neighbors :: Target
 neighbors = S.fromList [Neighboring NLeft, Neighboring NRight]
@@ -76,9 +80,12 @@ data Effect = ProvideResource !Resource !Int !Sharing
 data Cost = Cost MS.ResourceSet !Funding
           deriving (Ord, Eq, Show)
 
+instance Semigroup Cost where
+    Cost r1 f1 <> Cost r2 f2 = Cost (r1 <> r2) (f1 + f2)
+
 instance Monoid Cost where
+    mappend = (<>)
     mempty = Cost mempty 0
-    Cost r1 f1 `mappend` Cost r2 f2 = Cost (r1 <> r2) (f1 + f2)
 
 instance IsString Cost where
     fromString = F.foldMap toCost
@@ -111,9 +118,12 @@ data Card = Card { _cName       :: !T.Text
 newtype Exchange = RExchange { getExchange :: M.Map Neighbor MS.ResourceSet }
                    deriving (Show, Eq)
 
+instance Semigroup Exchange where
+    RExchange a <> RExchange b = RExchange (M.unionWith (<>) a b)
+
 instance Monoid Exchange where
+    mappend = (<>)
     mempty = RExchange mempty
-    mappend (RExchange a) (RExchange b) = RExchange (M.unionWith (<>) a b)
 
 instance ToJSON Exchange where
     toJSON = toJSON . map (_2 %~ MS.toList) . itoList . getExchange

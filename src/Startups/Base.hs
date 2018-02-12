@@ -6,6 +6,7 @@ import Startups.Json
 import qualified Data.Set as S
 import Control.Lens
 import Data.Aeson hiding (defaultOptions)
+import Data.Semigroup
 import Elm.Derive
 
 data Age = Age1
@@ -65,15 +66,24 @@ newtype PlayerCount = PlayerCount { getPlayerCount :: Integer }
 newtype Turn = Turn { getTurn :: Integer }
     deriving (Ord, Eq, Num, Integral, Real, Enum, Show, FromJSON, ToJSON)
 
+instance Semigroup Poacher where
+    Poacher a <> Poacher b = Poacher (a + b)
+
+instance Semigroup VictoryPoint where
+    VictoryPoint a <> VictoryPoint b = VictoryPoint (a + b)
+
+instance Semigroup Funding where
+    Funding a <> Funding b = Funding (a + b)
+
 instance Monoid Poacher where
+    mappend = (<>)
     mempty = 0
-    Poacher a `mappend` Poacher b = Poacher (a + b)
 instance Monoid VictoryPoint where
+    mappend = (<>)
     mempty = 0
-    VictoryPoint a `mappend` VictoryPoint b = VictoryPoint (a + b)
 instance Monoid Funding where
+    mappend = (<>)
     mempty = 0
-    Funding a `mappend` Funding b = Funding (a + b)
 
 data PoachingOutcome = Defeat
                      | Victory !Age

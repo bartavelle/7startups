@@ -7,7 +7,7 @@ import Startups.Base
 import Startups.Cards
 import qualified RMultiSet as MS
 
-import Data.Monoid
+import Data.Semigroup
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Foldable as F
@@ -68,8 +68,11 @@ splitLines = map simplify . splitLines' mempty
         splitLines' acc NewLine = [acc]
         splitLines' acc x = [PCat acc x]
 
+instance Semigroup PrettyDoc where
+    (<>) = PCat
+
 instance Monoid PrettyDoc where
-    mappend = PCat
+    mappend = (<>)
     mempty = PEmpty
 
 data PColor = PColorCard CardType
@@ -221,7 +224,7 @@ prettyColor (PColorVictory v) = case v of
 instance PP.Pretty PrettyDoc where
     pretty e = case e of
         PEmpty                     -> PP.empty
-        PCat a b                   -> PP.pretty a <> PP.pretty b
+        PCat a b                   -> mappend (PP.pretty a) (PP.pretty b)
         RawText t                  -> PP.string (T.unpack t)
         NewLine                    -> PP.linebreak
         Space                      -> PP.space
@@ -233,11 +236,11 @@ instance PP.Pretty PrettyDoc where
         PNeighbor NLeft            -> "◀ "
         PNeighbor NRight           -> "▶ "
         PFund (Funding 0)          -> mempty
-        PFund (Funding n)          -> PP.yellow (PP.pretty (numerical n) <> "$")
+        PFund (Funding n)          -> PP.yellow (mappend (PP.pretty (numerical n)) "$")
         PPoach (Poacher 0)         -> mempty
         PPoach (Poacher p)         -> PP.red $ if p > 5
                                                    then fromString (replicate (fromIntegral p) '⚔')
-                                                   else PP.pretty (numerical p) <> "⚔"
+                                                   else mappend (PP.pretty (numerical p)) "⚔"
         PVictory vp                -> PP.pretty $ numerical vp
         PPlayerCount pc            -> PP.pretty $ numerical pc
         PTurn t                    -> PP.pretty $ numerical t
@@ -264,7 +267,7 @@ instance PP.Pretty PrettyDoc where
         PResearch CustomSolution   -> PP.dullgreen "⚡ "
         PResearch Programming      -> PP.dullgreen "λ "
         PResearch Scaling          -> PP.dullgreen "⚖ "
-        PCompany (CompanyProfile c s) -> PP.string (show c) <> PP.string (show s)
+        PCompany (CompanyProfile c s) -> mappend (PP.string (show c)) (PP.string (show s))
 
 $(deriveBoth defaultOptions ''PrettyDoc)
 $(deriveBoth defaultOptions ''PColor)

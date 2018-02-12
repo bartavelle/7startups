@@ -130,7 +130,7 @@ instance HubMonad (PureHub time) where
     tell [(now,gid,event)]
   gamelog gid ar = _Wrapped' . ix gid . _GamePlaying . gpLog %= (ar :)
 
-zoomHub :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
+zoomHub :: (MonadError PlayerError m, MonadState HubState m) => GTrav a -> PlayerError -> (a -> m a) -> m ()
 zoomHub trav rr a = do
     HubState hs <- get
     case hs ^? trav of
@@ -139,7 +139,7 @@ zoomHub trav rr a = do
             x' <- a x
             put (HubState (hs & trav .~ x'))
 
-withGame :: (MonadError PlayerError m, HubMonad m, MonadState HubState m) => GameId -> (GameS -> m GameS) -> m ()
+withGame :: (MonadError PlayerError m, MonadState HubState m) => GameId -> (GameS -> m GameS) -> m ()
 withGame gid = zoomHub (ix gid) CantPlayNow
 
 _GamePlayers :: Traversal' GameS (S.Set PlayerId)
