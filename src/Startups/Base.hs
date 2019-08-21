@@ -6,7 +6,6 @@ import Startups.Json
 import qualified Data.Set as S
 import Control.Lens
 import Data.Aeson hiding (defaultOptions)
-import Data.Semigroup
 import Elm.Derive
 
 data Age = Age1

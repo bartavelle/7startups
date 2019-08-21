@@ -20,7 +20,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Foldable as F
 import qualified Data.Text as T
 import Data.List.NonEmpty (NonEmpty)
-import Data.Monoid
 
 import Control.Lens
 import Control.Concurrent (ThreadId,killThread)

@@ -11,7 +11,6 @@ import Data.String
 import Control.Lens hiding ((.=))
 import Control.Monad
 import Data.Aeson hiding (defaultOptions)
-import Data.Semigroup
 import Elm.Derive
 import Data.Char (toLower)
 

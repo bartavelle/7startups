@@ -7,7 +7,6 @@ import Startups.Base
 import Startups.Cards
 import qualified RMultiSet as MS
 
-import Data.Semigroup
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Foldable as F

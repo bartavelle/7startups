@@ -14,7 +14,6 @@ import Startups.CardList
 import qualified Data.Map.Strict as M
 import qualified RMultiSet as MS
 import Control.Lens
-import Data.Monoid
 import qualified Data.Foldable as F
 import System.Random (mkStdGen)
 import Data.List (sort)

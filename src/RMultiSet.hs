@@ -1,5 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE BangPatterns #-}
 module RMultiSet
   ( ResourceSet
   , singleton
@@ -23,7 +23,6 @@ import Data.Aeson
 import Data.Bits
 import Data.Word
 import Data.List (foldl')
-import Data.Semigroup
 
 import Startups.Base
 

@@ -14,7 +14,6 @@ import qualified Network.TLS as TLS
 import Control.Monad
 import Control.Applicative
 import Data.XML.Types
-import Data.Monoid
 import Data.Maybe (fromJust,fromMaybe)
 import Control.Concurrent (forkIO)
 import Control.Concurrent.STM

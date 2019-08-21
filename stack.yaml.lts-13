@@ -1,14 +1,21 @@
 # Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
-resolver: lts-8.4
+resolver: lts-13.29
 
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
+
+flags:
+  7startups:
+    xmpp: false
+    console: true
+
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
-- mvc-1.1.6
-- pontarius-xmpp-0.5.4
-- stringprep-1.0.0
+- elm-bridge-0.5.1@sha256:e38bfb9dcd1e2cd119a280072f2f99ed718120c21f37f102b8318156645f06da,2421
+- mvc-1.1.7@sha256:6b61c793ee4e7c6ac40aa35757409c92f0eb6bf104f5079667ec9f8cc0ecb7e3,1434
+- stateWriter-0.2.10@sha256:26262ab5c6c6c07476c43517be2d10d93d99d5e7493a0e386ec599293c3ff7a7,2113
+- stringprep-1.0.0@sha256:7e364d4afd2b9c2b81775705ea03635e2dc58bfe396897641306a4d4ef4046b3,1189
 
 # Override default flag values for local packages and extra-deps
 flags: {}
