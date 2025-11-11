@@ -1,11 +1,13 @@
 -- | This is a very simple promise system, for promises that can fail.
-module STM.Promise ( newPromise
-                   , PubFP
-                   , SubFP
-                   , fulfillPromise
-                   , failPromise
-                   , getResult
-                   ) where
+module STM.Promise
+  ( newPromise,
+    PubFP,
+    SubFP,
+    fulfillPromise,
+    failPromise,
+    getResult,
+  )
+where
 
 import Control.Concurrent.STM
 import Control.Monad (void)
@@ -18,8 +20,8 @@ newtype SubFP e a = SubFP (STM (Either e a))
 
 newPromise :: STM (PubFP e a, SubFP e a)
 newPromise = do
-    n <- newEmptyTMVar
-    return (PubFP (void . tryPutTMVar n), SubFP (readTMVar n))
+  n <- newEmptyTMVar
+  return (PubFP (void . tryPutTMVar n), SubFP (readTMVar n))
 
 fulfillPromise :: PubFP e a -> a -> STM ()
 fulfillPromise (PubFP o) a = o (Right a)

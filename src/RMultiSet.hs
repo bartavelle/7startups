@@ -1,48 +1,48 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 module RMultiSet
-  ( ResourceSet
-  , singleton
-  , toList
-  , fromList
-  , toOccurList
-  , fromOccurList
-  , RMultiSet.foldMap
-  , insertMany
-  , isSubsetOf
-  , member
-  , insert
-  , delete
-  , difference
-  , toSet
-  , RMultiSet.null
-  ) where
+  ( ResourceSet,
+    singleton,
+    toList,
+    fromList,
+    toOccurList,
+    fromOccurList,
+    RMultiSet.foldMap,
+    insertMany,
+    isSubsetOf,
+    member,
+    insert,
+    delete,
+    difference,
+    toSet,
+    RMultiSet.null,
+  )
+where
 
-import qualified Data.Set as S
-import Data.Aeson
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON))
 import Data.Bits
-import Data.Word
 import Data.List (foldl')
-
-import Startups.Base
+import qualified Data.Set as S
+import Data.Word (Word64)
+import Startups.Base (Resource)
 
 newtype ResourceSet
-    = ResourceSet Word64
-    deriving (Eq, Ord)
+  = ResourceSet Word64
+  deriving (Eq, Ord)
 
 instance Show ResourceSet where
-    show = show . toList
+  show = show . toList
 
 instance Semigroup ResourceSet where
-    ResourceSet a <> ResourceSet b = ResourceSet (a + b)
-    {-# INLINE (<>) #-}
-
+  ResourceSet a <> ResourceSet b = ResourceSet (a + b)
+  {-# INLINE (<>) #-}
 
 instance Monoid ResourceSet where
-    mempty = ResourceSet 0
-    {-# INLINE mempty #-}
-    mappend = (<>)
-    {-# INLINE mappend #-}
+  mempty = ResourceSet 0
+  {-# INLINE mempty #-}
+  mappend = (<>)
+  {-# INLINE mappend #-}
 
 singleton :: Resource -> ResourceSet
 singleton r = insert r mempty
@@ -68,14 +68,14 @@ occur r (ResourceSet s) = fromIntegral ((s `shiftR` (fromEnum r * 8)) .&. 0xff)
 {-# INLINE occur #-}
 
 toOccurList :: ResourceSet -> [(Resource, Int)]
-toOccurList s = [ (r, occur r s) | r <- resources ]
+toOccurList s = [(r, occur r s) | r <- resources]
 {-# INLINE toOccurList #-}
 
 fromOccurList :: [(Resource, Int)] -> ResourceSet
 fromOccurList = foldr (uncurry insertMany) mempty
 {-# INLINE fromOccurList #-}
 
-foldMap :: Monoid m => (Resource -> m) -> ResourceSet -> m
+foldMap :: (Monoid m) => (Resource -> m) -> ResourceSet -> m
 foldMap f = Prelude.foldMap f . toList
 {-# INLINE foldMap #-}
 
@@ -89,11 +89,11 @@ insert r (ResourceSet s) = ResourceSet (s + (1 `shiftL` (fromEnum r * 8)))
 
 isSubsetOf :: ResourceSet -> ResourceSet -> Bool
 isSubsetOf (ResourceSet s1) (ResourceSet s2) =
-    all check [0..6]
+  all check [0 .. 6]
   where
     check n =
       let !mask = 0xff `shiftL` (n * 8)
-      in  s1 .&. mask <= s2 .&. mask
+       in s1 .&. mask <= s2 .&. mask
 {-# INLINE isSubsetOf #-}
 
 member :: Resource -> ResourceSet -> Bool
@@ -107,21 +107,22 @@ delete r (ResourceSet s) = ResourceSet modified
     !mask = 0xff `shiftL` idx
     !imask = complement mask
     !cur = (s `shiftR` idx) .&. 0xff
-    !new = if cur == 0
-             then 0
-             else cur - 1
+    !new =
+      if cur == 0
+        then 0
+        else cur - 1
     !modified = (s .&. imask) .|. (new `shiftL` idx)
 {-# INLINE delete #-}
 
 difference :: ResourceSet -> ResourceSet -> ResourceSet
 difference (ResourceSet s1) (ResourceSet s2) =
-    ResourceSet (foldl' foo 0 [0..6])
+  ResourceSet (foldl' foo 0 [0 .. 6])
   where
     foo cur i =
       let !mask = 0xff `shiftL` (i * 8)
           !m1 = s1 .&. mask
           !m2 = s2 .&. mask
-      in  if m2 >= m1
+       in if m2 >= m1
             then cur
             else cur .|. (m1 - m2)
 {-# INLINE difference #-}
@@ -131,8 +132,7 @@ toSet = S.fromList . toList
 {-# INLINE toSet #-}
 
 instance ToJSON ResourceSet where
-    toJSON = toJSON . toOccurList
+  toJSON = toJSON . toOccurList
 
 instance FromJSON ResourceSet where
-    parseJSON = fmap fromOccurList . parseJSON
-
+  parseJSON = fmap fromOccurList . parseJSON
